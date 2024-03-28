@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <opencv2/opencv.hpp>
 #include "onnxruntime_cxx_api.h"
+#include <filesystem>
 
 #ifdef USE_CUDA
 #include <cuda_fp16.h>
