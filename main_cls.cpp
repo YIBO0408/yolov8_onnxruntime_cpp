@@ -11,7 +11,7 @@ std::vector<DL_RESULT> ClassifyImage(
     const std::string& modelPath = projectRoot / "models/best-cls.onnx", 
     const std::string& yamlPath = projectRoot / "configs/classnames.yaml",
     const cv::Size& imgSize = {640, 640}, 
-    bool useGPU = false)  
+    bool useGPU = true)  
     {
     std::vector<DL_RESULT> results;
     DL_INIT_PARAM params{ modelPath, YOLO_CLS, {imgSize.width, imgSize.height}};
@@ -80,9 +80,9 @@ void TestClassification() {
 
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
 
-    std::string modelPath = projectRoot / "models/best-cls.onnx";
+    std::string modelPath = projectRoot / "models/best.onnx";
     std::string yamlPath = projectRoot / "configs/classnames.yaml";
-    std::string imagePath = projectRoot / "images/16.jpg";
+    std::string imagePath = projectRoot / "images/4.jpg";
     cv::Size imageSize(416, 416);
     std::cout << "[YOLO_V8]: Infer image : " << imagePath << std::endl;
 
@@ -102,7 +102,7 @@ void TestClassification() {
         cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
     }
 
-    std::filesystem::path outputPath = projectRoot / "output/result.jpg";
+    std::filesystem::path outputPath = projectRoot / "output/cls_result.jpg";
     cv::imwrite(outputPath.string(), image);
     std::cout << "[YOLO_V8]: Result image saved at: " << outputPath << std::endl;
     

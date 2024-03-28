@@ -81,9 +81,9 @@ public:
     
     std::vector<std::string> classes{};
 
-    // bool cudaEnable;
+    bool cudaEnable;
 
-    // std::vector<int> imgSize;
+    std::vector<int> imgSize;
 
 
 private:
@@ -91,10 +91,10 @@ private:
     Ort::Session* session;
     Ort::RunOptions options;
     bool RunSegmentation = false;
-    bool cudaEnable;
+    // bool cudaEnable;
     std::vector<const char*> inputNodeNames;
     std::vector<const char*> outputNodeNames;
-    std::vector<int> imgSize;
+    // std::vector<int> imgSize;
 
     MODEL_TYPE modelType;
     float rectConfidenceThreshold;

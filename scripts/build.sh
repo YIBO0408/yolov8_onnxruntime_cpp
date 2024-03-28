@@ -6,7 +6,7 @@ cd ../build
 
 cmake ..
 
-make
+make -j 16
 
 cd ../scripts
 
