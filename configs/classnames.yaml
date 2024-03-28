@@ -1,0 +1,26 @@
+# Ultralytics YOLO 🚀, AGPL-3.0 license
+
+path:  
+train: 
+val: 
+test: 
+
+# Classes
+names:
+  0: baseball
+  1: cricket
+  2: football
+  
+# Download script/URL (optional)
+download: |
+  from ultralytics.utils.downloads import download
+  from pathlib import Path
+
+  segments = True  # segment or box labels
+  dir = Path(yaml['path'])  
+  url = 'https://github.com/ultralytics/yolov5/releases/download/v1.0/'
+  urls = [url + ('coco2017labels-segments.zip' if segments else 'coco2017labels.zip')] 
+  download(urls, dir=dir.parent)
+  urls = ['http://images.cocodataset.org/zips/train2017.zip',  
+          'http://images.cocodataset.org/zips/val2017.zip',  
+          'http://images.cocodataset.org/zips/test2017.zip']
