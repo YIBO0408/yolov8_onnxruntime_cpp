@@ -66,7 +66,6 @@ std::vector<DL_RESULT> ClassifyImage(
         auto max_probs = res.at(maxIndex);
         int predict_label = max_probs.classId;
         auto predict_name = yoloClassifier->classes[predict_label];
-        // std::cout << predict_name << std::endl;
         float confidence = max_probs.confidence;
         max_probs.className = predict_name;
         results.push_back(max_probs);
@@ -81,7 +80,7 @@ void TestClassification() {
 
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
 
-    std::string modelPath = projectRoot / "models/best.onnx";
+    std::string modelPath = projectRoot / "models/best-cls.onnx";
     std::string yamlPath = projectRoot / "configs/classnames.yaml";
     std::string imagePath = projectRoot / "images/16.jpg";
     cv::Size imageSize(416, 416);

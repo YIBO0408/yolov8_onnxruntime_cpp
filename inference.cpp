@@ -169,10 +169,7 @@ void YOLO_V8::DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result) {
     }
     // Detection mask
     if(RunSegmentation) cv::addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
-    // cv::imshow("Inference", img);
     cv::imwrite("/home/yibo/yolov8_cpp/YOLOv8-ONNXRuntime-CPP/output/out.jpg", img);
-    // cv::waitKey();
-    // cv::destroyWindow("Inference");
 }
 
  

@@ -46,7 +46,7 @@ endif ()
 
 include_directories(${PROJECT_NAME} ${ONNXRUNTIME_ROOT}/include)
 
-set(PROJECT_SOURCES inference.h inference.cpp main_det.cpp)
+set(PROJECT_SOURCES inference.h inference.cpp main_cls.cpp)
 # set(PROJECT_SOURCES yolov5v8_ort.h yolov5v8_ort.cpp main.cpp)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
