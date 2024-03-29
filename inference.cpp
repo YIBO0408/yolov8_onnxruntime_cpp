@@ -7,9 +7,6 @@
 #define benchmark
 using namespace std;
 
-// #define min(a,b)            (((a) < (b)) ? (a) : (b))
-
-
 YOLO_V8::YOLO_V8() { 
 
 }
@@ -245,7 +242,7 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
 #ifdef USE_CUDA
         half* blob = new half[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
-        std::vector<int64_t> inputNodeDims = { 1,3,imgSize.at(0),imgSize.at(1) };
+        std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
         TensorProcess(starttime_1, params, iImg, blob, inputNodeDims, oResult);
 #endif
     }
@@ -270,7 +267,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
     delete blob;
 
     switch (modelType) {
-    case YOLO_DETECT_V8: {
+    case YOLO_DET_SEG_V8: {
         // yolov5 has an output of shape (batchSize, 25200, 85) (Num classes + box[x,y,w,h] + confidence[c])
         // yolov8 has an output of shape (batchSize, 84,  8400) (Num classes + box[x,y,w,h])
         // yolov5
@@ -345,7 +342,10 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
             int _segHeight = _outputMaskTensorShape[3];
             float* pdata = outputTensor[1].GetTensorMutableData<float>();
             std::vector<float> mask(pdata, pdata + _segChannels * _segWidth * _segHeight);
-            int _seg_params[5] = { _segChannels, _segWidth, _segHeight, inputNodeDims[2], inputNodeDims[3] };
+            // int _seg_params[5] = {_segChannels, _segWidth, _segHeight, inputNodeDims[2], inputNodeDims[3]};
+            // std::cout << inputNodeDims[2] << std::endl;
+            // std::cout << imgSize.at(0) << std::endl;
+            int _seg_params[5] = {_segChannels, _segWidth, _segHeight, imgSize.at(0), imgSize.at(1) };
             cv::Mat mask_protos = cv::Mat(mask);
             GetMask(_seg_params, rectConfidenceThreshold, mask_proposals, mask_protos, params, iImg.size(), oResult);
         }
@@ -366,7 +366,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
 #endif
         break;
     }
-    case YOLO_CLS:
+    case YOLO_CLS_V8:
     {
         DL_RESULT result;
         for (int i = 0; i < this->classes.size(); i++) {
@@ -398,7 +398,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
 }
 
 
-char* YOLO_V8::WarmUpSession() {  // warm up
+char* YOLO_V8::WarmUpSession() {
     clock_t starttime_1 = clock();
     cv::Mat iImg = cv::Mat(cv::Size(imgSize.at(0), imgSize.at(1)), CV_8UC3);
     cv::Mat processedImg;

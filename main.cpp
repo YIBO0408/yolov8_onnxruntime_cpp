@@ -7,19 +7,12 @@
 
 std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
 
-std::vector<DL_RESULT> DetectImage(   
-    const std::string& imagePath,                       
-    const std::string& modelPath = projectRoot / "models/yolov8s.onnx", 
-    const std::string& yamlPath = projectRoot / "configs/coco.yaml",
-    const cv::Size& imgSize = {640, 640}, 
-    float rectConfidenceThreshold = 0.45,
-    float iouThreshold = 0.5,
-    bool useGPU = false)  
-    {
-
+std::vector<DL_RESULT> DetectImage(const std::string& imagePath, const std::string& modelPath, const std::string& yamlPath, 
+const cv::Size& imgSize, float rectConfidenceThreshold = 0.45, float iouThreshold = 0.5, bool useGPU = false) 
+{
     std::vector<DL_RESULT> results;
-    DL_INIT_PARAM params{ modelPath, YOLO_DETECT_V8, {imgSize.width, imgSize.height}, 
-    rectConfidenceThreshold, iouThreshold, useGPU};
+
+    DL_INIT_PARAM params{modelPath, YOLO_DET_SEG_V8, {imgSize.width, imgSize.height}, rectConfidenceThreshold, iouThreshold, useGPU};
     std::unique_ptr<YOLO_V8> yoloDetector(new YOLO_V8);
     if (yoloDetector->CreateSession(params) != 0) {
         std::cerr << "[YOLO_V8]: Failed to create session" << std::endl;
@@ -45,15 +38,11 @@ std::vector<DL_RESULT> DetectImage(
 }
 
 
-std::vector<DL_RESULT> ClassifyImage(   
-    const std::string& imagePath,                       
-    const std::string& modelPath = projectRoot / "models/best.onnx", 
-    const std::string& yamlPath = projectRoot / "configs/classnames.yaml",
-    const cv::Size& imgSize = {640, 640}, 
-    bool useGPU = false)  
-    {
+std::vector<DL_RESULT> ClassifyImage(const std::string& imagePath, const std::string& modelPath, const std::string& yamlPath, const cv::Size& imgSize, bool useGPU) 
+{
     std::vector<DL_RESULT> results;
-    DL_INIT_PARAM params{ modelPath, YOLO_CLS, {imgSize.width, imgSize.height}};
+
+    DL_INIT_PARAM params{modelPath, YOLO_CLS_V8, {imgSize.width, imgSize.height}};
 
     std::unique_ptr<YOLO_V8> yoloClassifier(new YOLO_V8);
 
@@ -72,7 +61,6 @@ std::vector<DL_RESULT> ClassifyImage(
     }
 
     yoloClassifier->classes = std::move(classNames);
-
 
     cv::Mat image = cv::imread(imagePath);
     if (image.empty()) {
@@ -120,7 +108,7 @@ void TestClassification() {
     std::string yamlPath = projectRoot / "configs/classnames.yaml";
     std::string imagePath = projectRoot / "images/14.jpg";
     cv::Size imageSize(416, 416);
-    bool useGPU = false;
+    bool useGPU = true;
 
     std::cout << "[YOLO_V8]: Infer image : " << imagePath << std::endl;
 
@@ -150,15 +138,15 @@ void TestClassification() {
 
 
 void TestDetectionOrSegmentation() {
-    // std::string model = "yolov8s-seg.onnx"; // 可以通过修改模型名称后缀来选择检测或分割
-    std::string model = "yolov8l.onnx";
+    std::string model = "yolov8l-seg.onnx"; // 可以通过修改模型名称后缀来选择检测或分割
+    // std::string model = "yolov8l.onnx";
     std::string modelPath = projectRoot / "models" / model;
     std::string yamlPath = projectRoot / "configs/coco.yaml";
     std::string imagePath = projectRoot / "images/17.jpg";
     cv::Size imageSize(640, 640); 
     float rectConfidenceThreshold = 0.3;
-    float iouThreshold = 0.5;
-    bool useGPU = false;
+    float iouThreshold = 0.45;
+    bool useGPU = true;
     std::cout << "[YOLO_V8]: Infer image: " << imagePath << std::endl;
     std::vector<DL_RESULT> results = DetectImage(imagePath, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
 
@@ -195,7 +183,7 @@ void TestDetectionOrSegmentation() {
     }
     // Detection mask
     if (model.find("seg") != std::string::npos) {
-        cv::addWeighted(image, 0.5, mask, 0.5, 0, image); //将mask加在原图上面
+        cv::addWeighted(image, 0.5, mask, 0.5, 0, image); //将mask加原图上
         std::filesystem::path outputPath = projectRoot / "output/seg_result.jpg";
         cv::imwrite(outputPath, image);
         std::cout << "[YOLO_V8]: Result image saved at: " << outputPath << std::endl;
@@ -212,7 +200,7 @@ void TestDetectionOrSegmentation() {
 }
 
 int main() {
-    TestDetectionOrSegmentation();
-    // TestClassification();
+    // TestDetectionOrSegmentation();
+    TestClassification();
     return 0;
 }

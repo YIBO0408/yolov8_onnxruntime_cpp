@@ -22,19 +22,15 @@
 
 enum MODEL_TYPE
 {
-    //FLOAT32 MODEL
-    YOLO_DETECT_V8 = 1,
-    YOLO_SEG = 2,
-    YOLO_CLS = 3,
-
-
+    YOLO_DET_SEG_V8 = 1,
+    YOLO_CLS_V8 = 2,
 };
 
 
 typedef struct _DL_INIT_PARAM
 {
     std::string modelPath;
-    MODEL_TYPE modelType = YOLO_DETECT_V8;
+    MODEL_TYPE modelType = YOLO_DET_SEG_V8;
     std::vector<int> imgSize = { 640, 640 };
     float rectConfidenceThreshold = 0.6;
     float iouThreshold = 0.5;
