@@ -30,7 +30,7 @@ enum MODEL_TYPE
 typedef struct _DL_INIT_PARAM
 {
     std::string modelPath;
-    MODEL_TYPE modelType = YOLO_DET_SEG_V8;
+    MODEL_TYPE modelType;
     std::vector<int> imgSize = { 640, 640 };
     float rectConfidenceThreshold = 0.6;
     float iouThreshold = 0.5;
@@ -78,7 +78,7 @@ public:
     std::vector<std::string> classes{};
 
     bool cudaEnable;
-
+    MODEL_TYPE modelType;
     std::vector<int> imgSize;
 
 
@@ -92,7 +92,7 @@ private:
     std::vector<const char*> outputNodeNames;
     // std::vector<int> imgSize;
 
-    MODEL_TYPE modelType;
+    // MODEL_TYPE modelType;
     float rectConfidenceThreshold;
     float iouThreshold;
 };

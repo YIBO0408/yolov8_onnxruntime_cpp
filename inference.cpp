@@ -252,8 +252,13 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
 
 template<typename N>
 char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims, std::vector<DL_RESULT>& oResult) {
-    Ort::Value inputTensor = Ort::Value::CreateTensor<typename std::remove_pointer<N>::type>(
-        Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU), blob, 3 * imgSize.at(0) * imgSize.at(1), inputNodeDims.data(), inputNodeDims.size());
+    Ort::Value inputTensor = Ort::Value::CreateTensor<typename std::remove_pointer<N>::type> (
+        Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU), 
+        blob, 
+        3 * imgSize.at(0) * imgSize.at(1), 
+        inputNodeDims.data(), 
+        inputNodeDims.size()
+        );
 #ifdef benchmark
     clock_t starttime_2 = clock();
 #endif 
