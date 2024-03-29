@@ -7,7 +7,7 @@
 #define benchmark
 using namespace std;
 
-#define min(a,b)            (((a) < (b)) ? (a) : (b))
+// #define min(a,b)            (((a) < (b)) ? (a) : (b))
 
 
 YOLO_V8::YOLO_V8() { 
@@ -28,11 +28,10 @@ namespace Ort
 
 
 template<typename T>
-char* BlobFromImage(cv::Mat& iImg, T& iBlob) {  // preprocess: normalization
+char* BlobFromImage(cv::Mat& iImg, T& iBlob) {
     int channels = iImg.channels();
     int imgHeight = iImg.rows;
     int imgWidth = iImg.cols;
-
     for (int c = 0; c < channels; c++) {
         for (int h = 0; h < imgHeight; h++) {
             for (int w = 0; w < imgWidth; w++) {
@@ -81,13 +80,11 @@ void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const
     auto dw = (float)(newShape.width - new_un_pad[0]);
     auto dh = (float)(newShape.height - new_un_pad[1]);
 
-    if (autoShape)
-    {
+    if (autoShape) {
         dw = (float)((int)dw % stride);
         dh = (float)((int)dh % stride);
     }
-    else if (scaleFill)
-    {
+    else if (scaleFill) {
         dw = 0.0f;
         dh = 0.0f;
         new_un_pad[0] = newShape.width;
@@ -99,8 +96,7 @@ void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const
     dw /= 2.0f;
     dh /= 2.0f;
 
-    if (shape.width != new_un_pad[0] && shape.height != new_un_pad[1])
-    {
+    if (shape.width != new_un_pad[0] && shape.height != new_un_pad[1]) {
         cv::resize(image, outImage, cv::Size(new_un_pad[0], new_un_pad[1]));
     }
     else {
@@ -119,7 +115,9 @@ void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const
 }
 
 
-void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold, const cv::Mat& maskProposals, const cv::Mat& mask_protos, const cv::Vec4d& params, const cv::Size& srcImgShape, std::vector<DL_RESULT>& output) {
+void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold, 
+const cv::Mat& maskProposals, const cv::Mat& mask_protos, 
+const cv::Vec4d& params, const cv::Size& srcImgShape, std::vector<DL_RESULT>& output) {
     int _segChannels = *_seg_params;
     int _segHeight = *(_seg_params + 1);
     int _segWidth = *(_seg_params + 2);
@@ -149,6 +147,8 @@ void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold,
 
 
 void YOLO_V8::DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result) {
+    std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
+
     int detections = result.size();
     cout << "Number of detections:" << detections << endl;
     cv::Mat mask = img.clone();
@@ -168,12 +168,12 @@ void YOLO_V8::DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result) {
         cv::putText(img, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
     }
     // Detection mask
-    if(RunSegmentation) cv::addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
-    cv::imwrite("/home/yibo/yolov8_cpp/YOLOv8-ONNXRuntime-CPP/output/out.jpg", img);
+    if(runSegmentation) cv::addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
+    cv::imwrite(projectRoot / "output/out.jpg", img);
 }
 
  
-char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {  // initialize: create session
+char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     char* Ret = RET_OK;
     
     rectConfidenceThreshold = iParams.rectConfidenceThreshold;
@@ -218,7 +218,7 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {  // initialize: create se
         strcpy(temp_buf, output_node_name.get());
         outputNodeNames.push_back(temp_buf);
     }
-    if (outputNodeNames.size() == 2) RunSegmentation = true;
+    if (outputNodeNames.size() == 2) runSegmentation = true;
     options = Ort::RunOptions{ nullptr };
     WarmUpSession();
     return RET_OK;
@@ -297,7 +297,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
             double maxClassScore;
             cv::minMaxLoc(scores, 0, &maxClassScore, 0, &class_id);
             if (maxClassScore > rectConfidenceThreshold) {
-                if (RunSegmentation) {
+                if (runSegmentation) {
                     int _segChannels = outputTensor[1].GetTensorTypeAndShapeInfo().GetShape()[1];
                     std::vector<float> temp_proto(data + classes.size() + 4, data + classes.size() + 4 + _segChannels);
                     picked_proposals.push_back(temp_proto);
@@ -331,10 +331,10 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
             std::uniform_int_distribution<int> dis(100, 255);
             result.color = cv::Scalar(dis(gen),dis(gen),dis(gen));
             if (result.box.width != 0 && result.box.height != 0) oResult.push_back(result);
-            if (RunSegmentation) temp_mask_proposals.push_back(picked_proposals[idx]);
+            if (runSegmentation) temp_mask_proposals.push_back(picked_proposals[idx]);
         }
 
-        if (RunSegmentation) {
+        if (runSegmentation) {
             cv::Mat mask_proposals;
             for (int i = 0; i < temp_mask_proposals.size(); ++i)
                 mask_proposals.push_back(cv::Mat(temp_mask_proposals[i]).t());

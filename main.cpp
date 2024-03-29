@@ -1,4 +1,5 @@
 #include <iostream>
+#include <getopt.h>
 #include <filesystem>
 #include <opencv2/core.hpp>
 #include <fstream>
@@ -15,10 +16,10 @@ std::vector<DL_RESULT> DetectImage(
     float iouThreshold = 0.5,
     bool useGPU = false)  
     {
+
     std::vector<DL_RESULT> results;
     DL_INIT_PARAM params{ modelPath, YOLO_DETECT_V8, {imgSize.width, imgSize.height}, 
-    rectConfidenceThreshold, iouThreshold};
-    params.cudaEnable = useGPU;
+    rectConfidenceThreshold, iouThreshold, useGPU};
     std::unique_ptr<YOLO_V8> yoloDetector(new YOLO_V8);
     if (yoloDetector->CreateSession(params) != 0) {
         std::cerr << "[YOLO_V8]: Failed to create session" << std::endl;
@@ -115,13 +116,15 @@ std::vector<DL_RESULT> ClassifyImage(
 
 
 void TestClassification() {
-    std::string modelPath = projectRoot / "models/best.onnx";
+    std::string modelPath = projectRoot / "models/yibo_train_cls_best.onnx";
     std::string yamlPath = projectRoot / "configs/classnames.yaml";
-    std::string imagePath = projectRoot / "images/4.jpg";
+    std::string imagePath = projectRoot / "images/14.jpg";
     cv::Size imageSize(416, 416);
+    bool useGPU = false;
+
     std::cout << "[YOLO_V8]: Infer image : " << imagePath << std::endl;
 
-    std::vector<DL_RESULT> results = ClassifyImage(imagePath, modelPath, yamlPath, imageSize, true);
+    std::vector<DL_RESULT> results = ClassifyImage(imagePath, modelPath, yamlPath, imageSize, useGPU);
     for (const auto& result : results) {
         std::cout << "[YOLO_V8]: Class:" << result.className << ", Confidence: " << result.confidence << std::endl;
     }
@@ -133,7 +136,7 @@ void TestClassification() {
     }
 
     for (const auto& result : results) {
-        std::string text = result.className + ": " + std::to_string(result.confidence);
+        std::string text = result.className + " " + std::to_string(result.confidence);
         cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
     }
 
@@ -146,15 +149,18 @@ void TestClassification() {
 
 
 
-void TestDetection() {
-    std::string modelPath = projectRoot / "models/yolov8l.onnx";
+void TestDetectionOrSegmentation() {
+    // std::string model = "yolov8s-seg.onnx"; // 可以通过修改模型名称后缀来选择检测或分割
+    std::string model = "yolov8l.onnx";
+    std::string modelPath = projectRoot / "models" / model;
     std::string yamlPath = projectRoot / "configs/coco.yaml";
     std::string imagePath = projectRoot / "images/17.jpg";
     cv::Size imageSize(640, 640); 
-
-    std::cout << "[YOLO_V8]: Infer image : " << imagePath << std::endl;
-
-    std::vector<DL_RESULT> results = DetectImage(imagePath, modelPath, yamlPath, imageSize, 0.3, 0.45, true);
+    float rectConfidenceThreshold = 0.3;
+    float iouThreshold = 0.5;
+    bool useGPU = false;
+    std::cout << "[YOLO_V8]: Infer image: " << imagePath << std::endl;
+    std::vector<DL_RESULT> results = DetectImage(imagePath, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
 
     for (const auto& result : results) {
         std::cout << "[YOLO_V8]: Class:" << result.className 
@@ -167,27 +173,46 @@ void TestDetection() {
         std::cerr << "[YOLO_V8]: Failed to load image" << std::endl;
         return;
     }
-
+    // YOLO_V8 yoloDetector;
+    // yoloDetector.DrawPred(image, results);
     int detections = results.size();
-    std::cout << "Number of detections:" << detections << std::endl;
+    std::cout << "[YOLO_V8]: Number of detections: " << detections << std::endl;
     cv::Mat mask = image.clone();
-    for (int i = 0; i < detections; ++i) {
+    for (int i = 0; i < detections; ++i)
+    {
         DL_RESULT detection = results[i];
         cv::Rect box = detection.box;
         cv::Scalar color = detection.color;
+        // Detection box
         cv::rectangle(image, box, color, 2);
         mask(detection.box).setTo(color, detection.boxMask);
-        std::string classString = detection.className + ':' + std::to_string(detection.confidence).substr(0, 4);
+        // Detection box text
+        std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
         cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
         cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
         cv::rectangle(image, textBox, color, cv::FILLED);
         cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
     }
-    cv::imwrite(projectRoot / "output/out.jpg", image);
+    // Detection mask
+    if (model.find("seg") != std::string::npos) {
+        cv::addWeighted(image, 0.5, mask, 0.5, 0, image); //将mask加在原图上面
+        std::filesystem::path outputPath = projectRoot / "output/seg_result.jpg";
+        cv::imwrite(outputPath, image);
+        std::cout << "[YOLO_V8]: Result image saved at: " << outputPath << std::endl;
+
+    }
+    else {
+        std::filesystem::path outputPath = projectRoot / "output/det_result.jpg";
+
+        cv::imwrite(outputPath, image);
+        std::cout << "[YOLO_V8]: Result image saved at: " << outputPath << std::endl;
+
+
+    }
 }
 
 int main() {
-    TestDetection();
+    TestDetectionOrSegmentation();
     // TestClassification();
     return 0;
 }
