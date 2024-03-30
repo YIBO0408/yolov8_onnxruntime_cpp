@@ -42,12 +42,21 @@ char* BlobFromImage(cv::Mat& iImg, T& iBlob) {
 
 
 char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oImg) {
-    cv::Mat img = iImg.clone();
-    cv::resize(iImg, oImg, cv::Size(iImgSize.at(0), iImgSize.at(1)));
-    if (img.channels() == 1) {
-        cv::cvtColor(oImg, oImg, cv::COLOR_GRAY2BGR);
-    }
-    cv::cvtColor(oImg, oImg, cv::COLOR_BGR2RGB);
+    if (iImg.channels() == 3) {
+            oImg = iImg.clone();
+            cv::cvtColor(oImg, oImg, cv::COLOR_BGR2RGB);
+        }
+        else {
+            cv::cvtColor(iImg, oImg, cv::COLOR_GRAY2RGB);
+        }
+
+    int h = iImg.rows;
+    int w = iImg.cols;
+    int m = min(h, w);
+    int top = (h - m) / 2;
+    int left = (w - m) / 2;
+    cv::resize(oImg(cv::Rect(left, top, m, m)), oImg, cv::Size(iImgSize.at(0), iImgSize.at(1)));
+
     return RET_OK;
 }
 
@@ -113,8 +122,8 @@ void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const
 
 
 void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold, 
-const cv::Mat& maskProposals, const cv::Mat& mask_protos, 
-const cv::Vec4d& params, const cv::Size& srcImgShape, std::vector<DL_RESULT>& output) {
+    const cv::Mat& maskProposals, const cv::Mat& mask_protos, 
+    const cv::Vec4d& params, const cv::Size& srcImgShape, std::vector<DL_RESULT>& output) {
     int _segChannels = *_seg_params;
     int _segHeight = *(_seg_params + 1);
     int _segWidth = *(_seg_params + 2);
@@ -154,10 +163,10 @@ void YOLO_V8::DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result) {
         DL_RESULT detection = result[i];
         cv::Rect box = detection.box;
         cv::Scalar color = detection.color;
-        // Detection box
+        // Detection bbox
         cv::rectangle(img, box, color, 2);
         mask(detection.box).setTo(color, detection.boxMask);
-        // Detection box text
+        // Detection bbox text
         std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
         cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
         cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
@@ -177,7 +186,7 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     iouThreshold = iParams.iouThreshold;
     imgSize = iParams.imgSize;
     modelType = iParams.modelType;
-    env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "Yolov8Inference");
+    env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "Yolov8ONNXRuntimeInference");
     Ort::SessionOptions sessionOption;
     if (iParams.cudaEnable) {
         cudaEnable = iParams.cudaEnable;
@@ -229,10 +238,15 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
     char* Ret = RET_OK;
     cv::Mat processedImg;
     cv::Vec4d params;
-    //resize图片尺寸，PreProcess是直接resize，LetterBox有padding操作
-    //PreProcess(iImg, imgSize, processedImg);
-    LetterBox(iImg, processedImg, params, cv::Size(imgSize.at(1), imgSize.at(0)));
-    if (modelType < 4) {
+    //resize图片尺寸，PreProcess是resize+centercrop，LetterBox有padding
+    switch (modelType) {
+    case YOLO_DET_SEG_V8: {
+        LetterBox(iImg, processedImg, params, cv::Size(imgSize.at(1), imgSize.at(0)));
+    }
+    case YOLO_CLS_V8: {
+        PreProcess(iImg, imgSize, processedImg);
+    }
+    if (modelType < 3) {
         float* blob = new float[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
@@ -246,8 +260,10 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
         TensorProcess(starttime_1, params, iImg, blob, inputNodeDims, oResult);
 #endif
     }
-    return Ret;
-}
+    }
+        return Ret;
+    }
+    
 
 
 template<typename N>
@@ -276,6 +292,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
         // yolov5 has an output of shape (batchSize, 25200, 85) (Num classes + box[x,y,w,h] + confidence[c])
         // yolov8 has an output of shape (batchSize, 84,  8400) (Num classes + box[x,y,w,h])
         // yolov5
+        cout << "###################YOLO_DET_SEG_V8###################" << endl;
         int dimensions = _outputTensorShape[1];
         int rows = _outputTensorShape[2];
         cv::Mat rowData(dimensions, rows, CV_32F, output);
@@ -373,6 +390,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
     }
     case YOLO_CLS_V8:
     {
+        cout << "##################YOLO_CLS_V8##################" << endl;
         DL_RESULT result;
         for (int i = 0; i < this->classes.size(); i++) {
             result.classId = i;

@@ -80,20 +80,20 @@ std::vector<DL_RESULT> Inference(
 
 
 void Test() {
-    std::string model = "yolov8l.onnx"; // 可以通过修改模型名称后缀来选择检测或分割
+    // std::string model = "yolov8l.onnx"; // 可以通过修改模型名称后缀来选择检测或分割
     // std::string model = "yolov8l-seg.onnx";
-    // std::string model = "yibo_train_cls_best.onnx";
+    std::string model = "yibo_train_cls_best.onnx";
     std::string modelPath = projectRoot / "models" / model;
 
-    std::string imagePath = projectRoot / "images/17.jpg";
-    std::string yamlPath = projectRoot / "configs/coco.yaml";
-    // std::string yamlPath = projectRoot / "configs/classnames.yaml";
+    std::string imagePath = projectRoot / "images/16.jpg";
+    // std::string yamlPath = projectRoot / "configs/coco.yaml";
+    std::string yamlPath = projectRoot / "configs/classnames.yaml";
     cv::Size imageSize(640, 640); 
-    // MODEL_TYPE modelType = YOLO_CLS_V8;
-    MODEL_TYPE modelType = YOLO_DET_SEG_V8;
+    MODEL_TYPE modelType = YOLO_CLS_V8;
+    // MODEL_TYPE modelType = YOLO_DET_SEG_V8;
     float rectConfidenceThreshold = 0.3;
-    float iouThreshold = 0.45;
-    bool useGPU = true;
+    float iouThreshold = 0.5;
+    bool useGPU = false;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
 
@@ -128,7 +128,7 @@ void Test() {
             cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
             cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
             cv::rectangle(image, textBox, color, cv::FILLED);
-            cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
+            cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 255), 2, 0);
         }
         // Detection mask
         if (model.find("seg") != std::string::npos) {
@@ -148,8 +148,8 @@ void Test() {
 
         for (const auto& result : results) {
             std::cout << "[YOLO_V8]: Class:" << result.className << ", Confidence: " << result.confidence << std::endl;
-            std::string text = result.className + " " + std::to_string(result.confidence);
-            cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
+            std::string text = result.className + " " + std::to_string(result.confidence).substr(0, 4);
+            cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2, 0);
         }
 
         std::filesystem::path outputPath = projectRoot / "output/cls_result.jpg";
