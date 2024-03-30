@@ -153,31 +153,31 @@ void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold,
 }
 
 
-void YOLO_V8::DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result) {
-    std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
+// void YOLO_V8::DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result) {
+//     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
 
-    int detections = result.size();
-    cout << "Number of detections:" << detections << endl;
-    cv::Mat mask = img.clone();
-    for (int i = 0; i < detections; ++i)
-    {
-        DL_RESULT detection = result[i];
-        cv::Rect box = detection.box;
-        cv::Scalar color = detection.color;
-        // Detection bbox
-        cv::rectangle(img, box, color, 2);
-        mask(detection.box).setTo(color, detection.boxMask);
-        // Detection bbox text
-        std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
-        cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
-        cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
-        cv::rectangle(img, textBox, color, cv::FILLED);
-        cv::putText(img, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
-    }
-    // Detection mask
-    if(runSegmentation) cv::addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
-    cv::imwrite(projectRoot / "output/out.jpg", img);
-}
+//     int detections = result.size();
+//     cout << "Number of detections:" << detections << endl;
+//     cv::Mat mask = img.clone();
+//     for (int i = 0; i < detections; ++i)
+//     {
+//         DL_RESULT detection = result[i];
+//         cv::Rect box = detection.box;
+//         cv::Scalar color = detection.color;
+//         // Detection bbox
+//         cv::rectangle(img, box, color, 2);
+//         mask(detection.box).setTo(color, detection.boxMask);
+//         // Detection bbox text
+//         std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
+//         cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
+//         cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
+//         cv::rectangle(img, textBox, color, cv::FILLED);
+//         cv::putText(img, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
+//     }
+//     // Detection mask
+//     if(runSegmentation) cv::addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
+//     cv::imwrite(projectRoot / "output/out.jpg", img);
+// }
 
  
 char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {

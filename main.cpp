@@ -5,7 +5,8 @@
 #include <fstream>
 #include "inference.h"
 
-std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
+
+
 
 std::vector<DL_RESULT> Inference(
     const std::string& imagePath, 
@@ -80,24 +81,32 @@ std::vector<DL_RESULT> Inference(
 
 
 void Test() {
-    std::string model = "yolov8x.onnx"; // 可以通过修改模型名称后缀来选择检测或分割
-    // std::string model = "yolov8s-seg.onnx";
-    // std::string model = "yibo_train_cls_best.onnx";
+    std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
+
+    std::string model = "yolov8s.onnx"; // object detection
+    // std::string model = "yolov8s-seg.onnx"; // instance segmentation
+    // std::string model = "yibo_train_cls_best.onnx"; // object classification
     std::string modelPath = projectRoot / "models" / model;
 
     std::string imagePath = projectRoot / "images/16.jpg";
-    std::string yamlPath = projectRoot / "configs/coco.yaml";
-    // std::string yamlPath = projectRoot / "configs/classnames.yaml";
+
+    std::string yamlPath = projectRoot / "configs/coco.yaml"; // detect or segment choose it
+    // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
+
     cv::Size imageSize(640, 640); 
+
     // MODEL_TYPE modelType = YOLO_CLS_V8;
     MODEL_TYPE modelType = YOLO_DET_SEG_V8;
+    
     float rectConfidenceThreshold = 0.3;
     float iouThreshold = 0.5;
-    bool useGPU = true;
+    bool useGPU = false;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
+    std::cout << "[YOLO_V8]: Infer model: " << model << std::endl;
 
     std::vector<DL_RESULT> results = Inference(imagePath, modelType, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
+
     cv::Mat image = cv::imread(imagePath);
     if (image.empty()) {
         std::cerr << "[YOLO_V8]: Failed to load image" << std::endl;
@@ -122,15 +131,13 @@ void Test() {
             cv::Scalar color = detection.color;
             // Detection box
             cv::rectangle(image, box, color, 2);
-
             mask(detection.box).setTo(color, detection.boxMask);
-
             // Detection box text
             std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
             cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
             cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
             cv::rectangle(image, textBox, color, cv::FILLED);
-            cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
+            cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2);
 
         }
         // Detection mask
@@ -152,7 +159,7 @@ void Test() {
         for (const auto& result : results) {
             std::cout << "[YOLO_V8]: Class:" << result.className << ", Confidence: " << result.confidence << std::endl;
             std::string text = result.className + " " + std::to_string(result.confidence).substr(0, 4);
-            cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2, 8);
+            cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
 
         }
 
@@ -164,6 +171,9 @@ void Test() {
 }
 
 int main() {
+    // ParseCommandLine(argc, argv);
     Test();
     return 0;
 }
+
+

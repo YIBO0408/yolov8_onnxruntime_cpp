@@ -46,7 +46,7 @@ typedef struct _DL_RESULT
     std::string className;
     float confidence;
     cv::Rect box;
-    cv::Mat boxMask; //矩形框内mask
+    cv::Mat boxMask; //detect矩形框内mask
     cv::Scalar color;
 } DL_RESULT;
 
@@ -61,7 +61,7 @@ public:
 public:
     char* CreateSession(DL_INIT_PARAM& iParams);
 
-    void DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result);
+    // void DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result);
 
     char* RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult);
 
@@ -78,7 +78,9 @@ public:
     std::vector<std::string> classes{};
 
     bool cudaEnable;
+
     MODEL_TYPE modelType;
+
     std::vector<int> imgSize;
 
 
