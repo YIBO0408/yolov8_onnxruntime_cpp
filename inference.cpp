@@ -50,13 +50,14 @@ char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oIm
             cv::cvtColor(iImg, oImg, cv::COLOR_GRAY2RGB);
         }
 
+
     int h = iImg.rows;
     int w = iImg.cols;
     int m = min(h, w);
     int top = (h - m) / 2;
     int left = (w - m) / 2;
-    cv::resize(oImg(cv::Rect(left, top, m, m)), oImg, cv::Size(iImgSize.at(0), iImgSize.at(1)));
 
+    cv::resize(oImg(cv::Rect(left, top, m, m)), oImg, cv::Size(iImgSize.at(0), iImgSize.at(1)));
     return RET_OK;
 }
 
@@ -186,7 +187,7 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     iouThreshold = iParams.iouThreshold;
     imgSize = iParams.imgSize;
     modelType = iParams.modelType;
-    env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "Yolov8ONNXRuntimeInference");
+    env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "YOLOv8ONNXRuntimeInference");
     Ort::SessionOptions sessionOption;
     if (iParams.cudaEnable) {
         cudaEnable = iParams.cudaEnable;
@@ -242,11 +243,14 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
     switch (modelType) {
     case YOLO_DET_SEG_V8: {
         LetterBox(iImg, processedImg, params, cv::Size(imgSize.at(1), imgSize.at(0)));
+        break;
     }
     case YOLO_CLS_V8: {
         PreProcess(iImg, imgSize, processedImg);
+        break;
     }
-    if (modelType < 3) {
+    }
+    if (modelType < 4) {
         float* blob = new float[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
@@ -259,7 +263,6 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
         TensorProcess(starttime_1, params, iImg, blob, inputNodeDims, oResult);
 #endif
-    }
     }
         return Ret;
     }
@@ -427,7 +430,6 @@ char* YOLO_V8::WarmUpSession() {
     cv::Mat processedImg;
     // PreProcess(iImg, imgSize, processedImg);
     cv::Vec4d params;
-    //resize图片尺寸，PreProcess是直接resize，LetterBox有padding操作
     LetterBox(iImg, processedImg, params, cv::Size(imgSize.at(1), imgSize.at(0)));
 
     if (modelType < 4) {
