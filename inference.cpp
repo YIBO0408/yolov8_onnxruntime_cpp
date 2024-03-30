@@ -1,5 +1,4 @@
 #define _CRT_SECURE_NO_WARNINGS
-
 #include "inference.h"
 #include <fstream>
 #include <regex>
@@ -22,6 +21,71 @@ namespace Ort
     struct TypeToTensorType<half> { static constexpr ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16; };
 }
 #endif
+
+
+std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TYPE modelType, const std::string& modelPath, 
+    const std::string& yamlPath, const cv::Size& imgSize, float rectConfidenceThreshold, float iouThreshold, bool useGPU = false) 
+{
+    std::vector<DL_RESULT> results;
+
+    DL_INIT_PARAM params{modelPath, modelType, {imgSize.width, imgSize.height}, rectConfidenceThreshold, iouThreshold, useGPU};
+
+
+    if (CreateSession(params) != 0) {
+        std::cerr << "[YOLO_V8]: Failed to create session" << std::endl;
+        return results;
+    }
+    std::vector<std::string> classNames;
+    if (ReadClassNames(yamlPath, classNames) != 0) {
+        std::cerr << "[YOLO_V8]: Failed to read class names" << std::endl;
+        return results;
+    }
+    classes = std::move(classNames);
+
+    cv::Mat image = cv::imread(imagePath);
+    if (image.empty()) {
+        std::cerr << "[YOLO_V8]: Failed to load image" << std::endl;
+        return results;
+    }
+
+    std::vector<DL_RESULT> res;
+    if (RunSession(image, res) != 0) {
+        std::cerr << "[YOLO_V8]: Failed to run session" << std::endl;
+        return results;
+    }
+
+    if (modelType == YOLO_CLS_V8 ) {
+        float maxConfidence = 0;
+        int maxIndex = -1;
+
+        for (int i = 0; i < res.size(); i++) 
+        {
+            auto probs = res.at(i);
+            if (probs.confidence > maxConfidence) 
+            {
+                maxConfidence = probs.confidence;
+                maxIndex = i;
+            }
+        }
+
+        if (maxIndex != -1) {
+            auto max_probs = res.at(maxIndex);
+            int predict_label = max_probs.classId;
+            auto predict_name = yolo->classes[predict_label];
+            float confidence = max_probs.confidence;
+            max_probs.className = predict_name;
+            results.push_back(max_probs);
+        }
+    }
+    else {
+        for (const auto& result : res) {
+            results.push_back(result);
+        }
+    }
+
+    return results;
+}
+
 
 
 template<typename T>
@@ -152,32 +216,6 @@ void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold,
     }
 }
 
-
-// void YOLO_V8::DrawPred(cv::Mat& img, std::vector<DL_RESULT>& result) {
-//     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
-
-//     int detections = result.size();
-//     cout << "Number of detections:" << detections << endl;
-//     cv::Mat mask = img.clone();
-//     for (int i = 0; i < detections; ++i)
-//     {
-//         DL_RESULT detection = result[i];
-//         cv::Rect box = detection.box;
-//         cv::Scalar color = detection.color;
-//         // Detection bbox
-//         cv::rectangle(img, box, color, 2);
-//         mask(detection.box).setTo(color, detection.boxMask);
-//         // Detection bbox text
-//         std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
-//         cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
-//         cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
-//         cv::rectangle(img, textBox, color, cv::FILLED);
-//         cv::putText(img, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
-//     }
-//     // Detection mask
-//     if(runSegmentation) cv::addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
-//     cv::imwrite(projectRoot / "output/out.jpg", img);
-// }
 
  
 char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {

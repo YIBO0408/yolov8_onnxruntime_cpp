@@ -6,106 +6,31 @@
 #include "inference.h"
 
 
-
-
-std::vector<DL_RESULT> Inference(
-    const std::string& imagePath, 
-    MODEL_TYPE modelType, 
-    const std::string& modelPath, 
-    const std::string& yamlPath, 
-    const cv::Size& imgSize, 
-    float rectConfidenceThreshold = 0.3, 
-    float iouThreshold = 0.45, 
-    bool useGPU = false) 
-{
-    std::vector<DL_RESULT> results;
-
-    DL_INIT_PARAM params{modelPath, modelType, {imgSize.width, imgSize.height}, rectConfidenceThreshold, iouThreshold, useGPU};
-
-    std::unique_ptr<YOLO_V8> yolo(new YOLO_V8);
-
-    if (yolo->CreateSession(params) != 0) {
-        std::cerr << "[YOLO_V8]: Failed to create session" << std::endl;
-        return results;
-    }
-    std::vector<std::string> classNames;
-    if (yolo->ReadClassNames(yamlPath, classNames) != 0) {
-        std::cerr << "[YOLO_V8]: Failed to read class names" << std::endl;
-        return results;
-    }
-    yolo->classes = std::move(classNames);
-
-    cv::Mat image = cv::imread(imagePath);
-    if (image.empty()) {
-        std::cerr << "[YOLO_V8]: Failed to load image" << std::endl;
-        return results;
-    }
-
-    std::vector<DL_RESULT> res;
-    if (yolo->RunSession(image, res) != 0) {
-        std::cerr << "[YOLO_V8]: Failed to run session" << std::endl;
-        return results;
-    }
-
-    if (modelType == YOLO_CLS_V8 ) {
-        float maxConfidence = 0;
-        int maxIndex = -1;
-
-        for (int i = 0; i < res.size(); i++) 
-        {
-            auto probs = res.at(i);
-            if (probs.confidence > maxConfidence) 
-            {
-                maxConfidence = probs.confidence;
-                maxIndex = i;
-            }
-        }
-
-        if (maxIndex != -1) {
-            auto max_probs = res.at(maxIndex);
-            int predict_label = max_probs.classId;
-            auto predict_name = yolo->classes[predict_label];
-            float confidence = max_probs.confidence;
-            max_probs.className = predict_name;
-            results.push_back(max_probs);
-        }
-    }
-    else {
-        for (const auto& result : res) {
-            results.push_back(result);
-        }
-    }
-
-    return results;
-}
-
-
 void Test() {
-    std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
-
-    std::string model = "yolov8s.onnx"; // object detection
-    // std::string model = "yolov8s-seg.onnx"; // instance segmentation
+    std::filesystem::path projectRoot = std::filesystem::curent_path().parent_path();
+    // std::string model = "yolov8s.onnx"; // object detection
+    std::string model = "yolov8s-seg.onnx"; // instance segmentation
     // std::string model = "yibo_train_cls_best.onnx"; // object classification
     std::string modelPath = projectRoot / "models" / model;
 
-    std::string imagePath = projectRoot / "images/16.jpg";
+    std::string imagePath = projectRoot / "images/15.jpg";
 
     std::string yamlPath = projectRoot / "configs/coco.yaml"; // detect or segment choose it
     // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
 
     cv::Size imageSize(640, 640); 
 
-    // MODEL_TYPE modelType = YOLO_CLS_V8;
-    MODEL_TYPE modelType = YOLO_DET_SEG_V8;
-    
+    MODEL_TYPE modelType = YOLO_DET_SEG_V8; // YOLO_CLS_V8
+
     float rectConfidenceThreshold = 0.3;
     float iouThreshold = 0.5;
-    bool useGPU = false;
+    bool useGPU = true;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
     std::cout << "[YOLO_V8]: Infer model: " << model << std::endl;
+    std::unique_ptr<YOLO_V8> yolo(new YOLO_V8);
 
-    std::vector<DL_RESULT> results = Inference(imagePath, modelType, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
+    auto results = yolo->Inference(imagePath, modelType, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
 
     cv::Mat image = cv::imread(imagePath);
     if (image.empty()) {
@@ -133,7 +58,7 @@ void Test() {
             cv::rectangle(image, box, color, 2);
             mask(detection.box).setTo(color, detection.boxMask);
             // Detection box text
-            std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
+            std::string classString = detection.className + " " + std::to_string(detection.confidence).substr(0, 4);
             cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
             cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
             cv::rectangle(image, textBox, color, cv::FILLED);
@@ -142,16 +67,16 @@ void Test() {
         }
         // Detection mask
         if (model.find("seg") != std::string::npos) {
-            cv::addWeighted(image, 0.5, mask, 0.5, 0, image); //将mask加原图上
+            cv::addWeighted(image, 0.5, mask, 0.5, 0, image);
             std::filesystem::path outputPath = projectRoot / "output/seg_result.jpg";
             cv::imwrite(outputPath, image);
-            std::cout << "[YOLO_V8]: SEG Result image saved at: " << outputPath << std::endl;
+            std::cout << "[YOLO_V8(SEG)]: Result image saved at: " << outputPath << std::endl;
 
         }
         else {
             std::filesystem::path outputPath = projectRoot / "output/det_result.jpg";
             cv::imwrite(outputPath, image);
-            std::cout << "[YOLO_V8]: DET Result image saved at: " << outputPath << std::endl;
+            std::cout << "[YOLO_V8(DET)]: Result image saved at: " << outputPath << std::endl;
         }
     }
     else {
@@ -165,13 +90,12 @@ void Test() {
 
         std::filesystem::path outputPath = projectRoot / "output/cls_result.jpg";
         cv::imwrite(outputPath.string(), image);
-        std::cout << "[YOLO_V8]: CLS Result image saved at: " << outputPath << std::endl;
+        std::cout << "[YOLO_V8(CLS)]: Result image saved at: " << outputPath << std::endl;
     }
 
 }
 
 int main() {
-    // ParseCommandLine(argc, argv);
     Test();
     return 0;
 }
