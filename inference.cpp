@@ -71,7 +71,7 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
         if (maxIndex != -1) {
             auto max_probs = res.at(maxIndex);
             int predict_label = max_probs.classId;
-            auto predict_name = yolo->classes[predict_label];
+            auto predict_name = classes[predict_label];
             float confidence = max_probs.confidence;
             max_probs.className = predict_name;
             results.push_back(max_probs);

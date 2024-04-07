@@ -7,13 +7,13 @@
 
 
 void Test() {
-    std::filesystem::path projectRoot = std::filesystem::curent_path().parent_path();
+    std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
     // std::string model = "yolov8s.onnx"; // object detection
-    std::string model = "yolov8s-seg.onnx"; // instance segmentation
+    std::string model = "yolov8x-seg.onnx"; // instance segmentation
     // std::string model = "yibo_train_cls_best.onnx"; // object classification
     std::string modelPath = projectRoot / "models" / model;
 
-    std::string imagePath = projectRoot / "images/15.jpg";
+    std::string imagePath = projectRoot / "images/16.jpg";
 
     std::string yamlPath = projectRoot / "configs/coco.yaml"; // detect or segment choose it
     // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
