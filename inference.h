@@ -51,10 +51,10 @@ public:
     ~YOLO_V8();
 public:
     char* CreateSession(DL_INIT_PARAM& iParams);
-    char* RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult);
-    char* WarmUpSession();
+    char* RunSession(cv::Mat& iImg, DL_INIT_PARAM& iParams, std::vector<DL_RESULT>& oResult);
+    char* WarmUpSession(DL_INIT_PARAM& iParams);
     template<typename N>
-    char* TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims,
+    char* TensorProcess(DL_INIT_PARAM& iParams, clock_t& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims,
         std::vector<DL_RESULT>& oResult);
     char* PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oImg);
     int ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames);
@@ -70,11 +70,8 @@ private:
     Ort::Session* session;
     Ort::RunOptions options;
     bool runSegmentation = false;
-    // bool cudaEnable;
     std::vector<const char*> inputNodeNames;
     std::vector<const char*> outputNodeNames;
-    // std::vector<int> imgSize;
-    // MODEL_TYPE modelType;
     float rectConfidenceThreshold;
     float iouThreshold;
 };

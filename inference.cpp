@@ -28,7 +28,14 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
 {
     std::vector<DL_RESULT> results;
 
-    DL_INIT_PARAM params{modelPath, modelType, {imgSize.width, imgSize.height}, rectConfidenceThreshold, iouThreshold, useGPU};
+    DL_INIT_PARAM params;
+    params.modelPath = modelPath;
+    params.modelType = modelType;
+    params.imgSize.push_back(imgSize.width);
+    params.imgSize.push_back(imgSize.height);
+    params.rectConfidenceThreshold = rectConfidenceThreshold;
+    params.iouThreshold = iouThreshold;
+    params.cudaEnable = useGPU;
 
 
     if (CreateSession(params) != 0) {
@@ -49,7 +56,7 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
     }
 
     std::vector<DL_RESULT> res;
-    if (RunSession(image, res) != 0) {
+    if (RunSession(image, params, res) != 0) {
         std::cerr << "[YOLO_V8]: Failed to run session" << std::endl;
         return results;
     }
@@ -227,12 +234,16 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     modelType = iParams.modelType;
     env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "YOLOv8ONNXRuntimeInference");
     Ort::SessionOptions sessionOption;
+
     if (iParams.cudaEnable) {
         cudaEnable = iParams.cudaEnable;
+        std::cout << cudaEnable << std::endl;
+
         OrtCUDAProviderOptions cudaOption;
         cudaOption.device_id = 0;
         sessionOption.AppendExecutionProvider_CUDA(cudaOption);
     }
+
     sessionOption.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
     sessionOption.SetIntraOpNumThreads(iParams.intraOpNumThreads);
     sessionOption.SetLogSeverityLevel(iParams.logSeverityLevel);
@@ -265,12 +276,12 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     }
     if (outputNodeNames.size() == 2) runSegmentation = true;
     options = Ort::RunOptions{ nullptr };
-    WarmUpSession();
+    WarmUpSession(iParams);
     return RET_OK;
 }
 
 
-char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
+char* YOLO_V8::RunSession(cv::Mat& iImg, DL_INIT_PARAM& iParams, std::vector<DL_RESULT>& oResult) {
 #ifdef benchmark
     clock_t starttime_1 = clock();
 #endif 
@@ -292,7 +303,7 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
         float* blob = new float[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
-        TensorProcess(starttime_1, params,iImg, blob, inputNodeDims, oResult);
+        TensorProcess(iParams, starttime_1, params, iImg, blob, inputNodeDims, oResult);
     }
     else {
 #ifdef USE_CUDA
@@ -308,7 +319,7 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
 
 
 template<typename N>
-char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims, std::vector<DL_RESULT>& oResult) {
+char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, clock_t& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims, std::vector<DL_RESULT>& oResult) {
     Ort::Value inputTensor = Ort::Value::CreateTensor<typename std::remove_pointer<N>::type> (
         Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU), 
         blob, 
@@ -418,7 +429,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
     double pre_process_time = (double)(starttime_2 - starttime_1) / CLOCKS_PER_SEC * 1000;
     double process_time = (double)(starttime_3 - starttime_2) / CLOCKS_PER_SEC * 1000;
     double post_process_time = (double)(starttime_4 - starttime_3) / CLOCKS_PER_SEC * 1000;
-    if (cudaEnable) {
+    if (iParams.cudaEnable) {
         cout << "[YOLO_V8(CUDA)]: " << pre_process_time << "ms pre-process, " << process_time 
         << "ms inference, " << post_process_time << "ms post-process." << endl;
     }
@@ -445,7 +456,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
     double process_time = (double)(starttime_3 - starttime_2) / CLOCKS_PER_SEC * 1000;
     double post_process_time = (double)(starttime_4 - starttime_3) / CLOCKS_PER_SEC * 1000;
 
-    if (cudaEnable) {
+    if (iParams.cudaEnable) {
         cout << "[YOLO_V8(CUDA)]: " << pre_process_time << "ms pre-process, " << process_time << "ms inference, " << post_process_time << "ms post-process." << endl;
     }
     else {
@@ -462,7 +473,7 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& i
 }
 
 
-char* YOLO_V8::WarmUpSession() {
+char* YOLO_V8::WarmUpSession(DL_INIT_PARAM& iParams) {
     clock_t starttime_1 = clock();
     cv::Mat iImg = cv::Mat(cv::Size(imgSize.at(0), imgSize.at(1)), CV_8UC3);
     cv::Mat processedImg;
@@ -481,7 +492,7 @@ char* YOLO_V8::WarmUpSession() {
         delete[] blob;
         clock_t starttime_4 = clock();
         double post_process_time = (double)(starttime_4 - starttime_1) / CLOCKS_PER_SEC * 1000;
-        if (cudaEnable) {
+        if (iParams.cudaEnable) {
             cout << "[YOLO_V8(CUDA)]: Session has Warmed Up" << endl;
             cout << "[YOLO_V8(CUDA)]: " << "CUDA warm-up cost: " << post_process_time << " ms." << endl;
         }

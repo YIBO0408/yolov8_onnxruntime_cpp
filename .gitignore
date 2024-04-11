@@ -1,6 +1,7 @@
 build/
 models/*
 onnxruntime-linux-cpu-1.17.0/
+onnxruntime-linux-cpu-1.15.0/
 onnxruntime-linux-gpu-1.17.0/
 onnxruntime-win-cpu-1.17.0/
 onnxruntime-win-gpu-1.17.0/

@@ -9,7 +9,7 @@
 void Test() {
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
     // std::string model = "yolov8s.onnx"; // object detection
-    std::string model = "yolov8x-seg.onnx"; // instance segmentation
+    std::string model = "yolov8s-seg.onnx"; // instance segmentation
     // std::string model = "yibo_train_cls_best.onnx"; // object classification
     std::string modelPath = projectRoot / "models" / model;
 
@@ -24,7 +24,7 @@ void Test() {
 
     float rectConfidenceThreshold = 0.3;
     float iouThreshold = 0.5;
-    bool useGPU = true;
+    bool useGPU = false;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
     std::cout << "[YOLO_V8]: Infer model: " << model << std::endl;
