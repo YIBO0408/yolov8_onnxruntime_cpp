@@ -8,22 +8,22 @@
 
 void Test() {
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
-    // std::string model = "yolov8s.onnx"; // object detection
-    std::string model = "yolov8s-seg.onnx"; // instance segmentation
+    std::string model = "yolov8n.onnx"; // object detection
+    // std::string model = "yolov8s-seg.onnx"; // instance segmentation
     // std::string model = "yibo_train_cls_best.onnx"; // object classification
     std::string modelPath = projectRoot / "models" / model;
 
-    std::string imagePath = projectRoot / "images/16.jpg";
+    std::string imagePath = projectRoot / "images/18.jpg";
 
     std::string yamlPath = projectRoot / "configs/coco.yaml"; // detect or segment choose it
     // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
 
-    cv::Size imageSize(640, 640); 
+    cv::Size imageSize(444, 444); 
 
     MODEL_TYPE modelType = YOLO_DET_SEG_V8; // YOLO_CLS_V8
 
-    float rectConfidenceThreshold = 0.3;
-    float iouThreshold = 0.5;
+    float rectConfidenceThreshold = 0.9;
+    float iouThreshold = 0.45;
     bool useGPU = false;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;

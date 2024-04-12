@@ -429,13 +429,14 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, clock_t& starttime_1, cv::V
     double pre_process_time = (double)(starttime_2 - starttime_1) / CLOCKS_PER_SEC * 1000;
     double process_time = (double)(starttime_3 - starttime_2) / CLOCKS_PER_SEC * 1000;
     double post_process_time = (double)(starttime_4 - starttime_3) / CLOCKS_PER_SEC * 1000;
+    double total_time = pre_process_time + process_time + post_process_time;
     if (iParams.cudaEnable) {
         cout << "[YOLO_V8(CUDA)]: " << pre_process_time << "ms pre-process, " << process_time 
-        << "ms inference, " << post_process_time << "ms post-process." << endl;
+            << "ms inference, " << post_process_time << "ms post-process. Total time: " << total_time << " ms." << endl;
     }
     else {
         cout << "[YOLO_V8(CPU)]: " << pre_process_time << "ms pre-process, " << process_time 
-        << "ms inference, " << post_process_time << "ms post-process." << endl;
+            << "ms inference, " << post_process_time << "ms post-process. Total time: " << total_time << " ms." << endl;
     }
 #endif
         break;
@@ -455,12 +456,14 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, clock_t& starttime_1, cv::V
     double pre_process_time = (double)(starttime_2 - starttime_1) / CLOCKS_PER_SEC * 1000;
     double process_time = (double)(starttime_3 - starttime_2) / CLOCKS_PER_SEC * 1000;
     double post_process_time = (double)(starttime_4 - starttime_3) / CLOCKS_PER_SEC * 1000;
-
+    double total_time = pre_process_time + process_time + post_process_time;
     if (iParams.cudaEnable) {
-        cout << "[YOLO_V8(CUDA)]: " << pre_process_time << "ms pre-process, " << process_time << "ms inference, " << post_process_time << "ms post-process." << endl;
+        cout << "[YOLO_V8(CUDA)]: " << pre_process_time << "ms pre-process, " << process_time 
+            << "ms inference, " << post_process_time << "ms post-process. Total time: " << total_time << " ms." << endl;
     }
     else {
-        cout << "[YOLO_V8(CPU)]: " << pre_process_time << "ms pre-process, " << process_time << "ms inference, " << post_process_time << "ms post-process." << endl;
+        cout << "[YOLO_V8(CPU)]: " << pre_process_time << "ms pre-process, " << process_time 
+            << "ms inference, " << post_process_time << "ms post-process. Total time: " << total_time << " ms." << endl;
     }
 #endif
         break;
@@ -492,13 +495,13 @@ char* YOLO_V8::WarmUpSession(DL_INIT_PARAM& iParams) {
         delete[] blob;
         clock_t starttime_4 = clock();
         double post_process_time = (double)(starttime_4 - starttime_1) / CLOCKS_PER_SEC * 1000;
-        if (iParams.cudaEnable) {
-            cout << "[YOLO_V8(CUDA)]: Session has Warmed Up" << endl;
-            cout << "[YOLO_V8(CUDA)]: " << "CUDA warm-up cost: " << post_process_time << " ms." << endl;
-        }
-        else{
-            cout << "[YOLO_V8(CPU)]: Session has Warmed Up" << endl;
-        }
+        // if (iParams.cudaEnable) {
+        //     cout << "[YOLO_V8(CUDA)]: Session has Warmed Up" << endl;
+        //     cout << "[YOLO_V8(CUDA)]: " << "CUDA warm-up cost: " << post_process_time << " ms." << endl;
+        // }
+        // else{
+        //     cout << "[YOLO_V8(CPU)]: Session has Warmed Up" << endl;
+        // }
     }
     else {
         #ifdef USE_CUDA

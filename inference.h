@@ -26,7 +26,7 @@ typedef struct _DL_INIT_PARAM
 {
     std::string modelPath;
     MODEL_TYPE modelType;
-    std::vector<int> imgSize = { 640, 640 };
+    std::vector<int> imgSize;
     float rectConfidenceThreshold = 0.6;
     float iouThreshold = 0.5;
     bool cudaEnable = false;
