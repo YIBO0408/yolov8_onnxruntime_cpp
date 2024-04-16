@@ -41,6 +41,7 @@ typedef struct _DL_RESULT
     float confidence;
     cv::Rect box;
     cv::Mat boxMask; //detect矩形框内mask
+    // std::vector<std::vector<cv::Point>> contours; // 分割的轮廓点
     cv::Scalar color;
 } DL_RESULT;
 
