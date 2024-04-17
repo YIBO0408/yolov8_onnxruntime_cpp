@@ -49,24 +49,17 @@ void Test() {
             cv::Scalar color = detection.color;
             // Detection box
             cv::rectangle(image, box, color, 1);
-            // mask(detection.box).setTo(color, detection.boxMask);
-
-            std::vector<std::vector<cv::Point>> contours;
-            cv::findContours(detection.boxMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-            cv::drawContours(image(box), contours, -1, cv::Scalar(0, 255, 0), 2);
-            
-
             // Detection box text
             std::string classString = detection.className + " " + std::to_string(detection.confidence).substr(0, 4);
             cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
             cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
             cv::rectangle(image, textBox, color, cv::FILLED);
             cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2);
-
+            // Segmentation mask contours
+            std::vector<std::vector<cv::Point>> contours = detection.contours;
+            cv::drawContours(image(box), contours, -1, cv::Scalar(0, 255, 0), 2);
         }
-        // Detection mask
         if (model.find("seg") != std::string::npos) {
-            cv::addWeighted(image, 0.5, mask, 0.5, 0, image);
             std::filesystem::path outputPath = projectRoot / "output/seg_result.jpg";
             cv::imwrite(outputPath, image);
             std::cout << "[YOLO_V8(SEG)]: Result image saved at: " << outputPath << std::endl;

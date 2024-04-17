@@ -219,7 +219,10 @@ void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold,
         //crop
         cv::Rect temp_rect = output[i].box;
         mask = mask(temp_rect) > rectConfidenceThreshold;
-        output[i].boxMask = mask;
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        output[i].contours = contours;
+        // output[i].boxMask = mask;
     }
 }
 
