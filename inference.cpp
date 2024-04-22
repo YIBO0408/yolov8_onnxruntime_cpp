@@ -536,23 +536,34 @@ int YOLO_V8::ReadClassNames(const std::string& yamlPath, std::vector<std::string
     }
 
     std::string line;
-    bool foundNames = false;
-    while (std::getline(file, line)) {
-        if (foundNames) {
-            line.erase(0, line.find_first_not_of(" \t"));
-            if (!line.empty() && line[0] != ':') {
-                std::stringstream ss(line);
-                std::string name;
-                while (ss >> name) {
-                    if (isalpha(name[0])) {
-                        classNames.push_back(name);
-                    }
-                }
-            }
+    std::vector<std::string> lines;
+    while (std::getline(file, line))
+    {
+        lines.push_back(line);
+    }
+
+    std::size_t start = 0;
+    std::size_t end = 0;
+    for (std::size_t i = 0; i < lines.size(); i++)
+    {
+        if (lines[i].find("names:") != std::string::npos)
+        {
+            start = i + 1;
         }
-        if (line.find("names:") != std::string::npos) {
-            foundNames = true;
+        else if (start > 0 && lines[i].find(':') == std::string::npos)
+        {
+            end = i;
+            break;
         }
+    }
+
+    for (std::size_t i = start; i < end; i++)
+    {
+        std::stringstream ss(lines[i]);
+        std::string name;
+        std::getline(ss, name, ':');
+        std::getline(ss, name);
+        classNames.push_back(name);
     }
     return 0;
 }

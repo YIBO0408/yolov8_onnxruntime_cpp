@@ -11,7 +11,6 @@ void Test(std::string imagePath) {
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
     std::string model = "best.onnx"; 
     std::string modelPath = projectRoot / "models" / model;
-    // std::string imagePath = projectRoot / "images/origin_data/1782-2743-03-JKE002-07-01-01-01-20240413001249876.jpg";
     std::string yamlPath = projectRoot / "configs/jke_zhuanzi.yaml"; // detect or segment choose it
     // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
     cv::Size imageSize(768, 768); 
