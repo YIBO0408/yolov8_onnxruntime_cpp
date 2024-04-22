@@ -1,0 +1,16 @@
+path: /home/yibo/yolov8_train/origin_data/
+train: images/train
+val: images/val
+names:
+  0: huashang
+  1: pengshang
+  2: heiban
+  3: yashang
+  4: canfen
+  5: cashang
+  6: queliao
+  7: liewen
+  8: yiwu
+  9: pengshangqiqiao
+  10: shengxiou
+  11: kailie

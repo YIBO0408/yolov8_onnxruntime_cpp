@@ -5,18 +5,19 @@
 #include <fstream>
 #include "inference.h"
 
+namespace fs = std::filesystem;
 
-void Test() {
+void Test(std::string imagePath) {
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
-    std::string model = "yolov8s-seg.onnx"; 
+    std::string model = "best.onnx"; 
     std::string modelPath = projectRoot / "models" / model;
-    std::string imagePath = projectRoot / "images/18.jpg";
-    std::string yamlPath = projectRoot / "configs/coco.yaml"; // detect or segment choose it
+    // std::string imagePath = projectRoot / "images/origin_data/1782-2743-03-JKE002-07-01-01-01-20240413001249876.jpg";
+    std::string yamlPath = projectRoot / "configs/jke_zhuanzi.yaml"; // detect or segment choose it
     // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
-    cv::Size imageSize(640, 640); 
+    cv::Size imageSize(768, 768); 
     MODEL_TYPE modelType = YOLO_DET_SEG_V8; // YOLO_CLS_V8
-    float rectConfidenceThreshold = 0.3;
-    float iouThreshold = 0.5;
+    float rectConfidenceThreshold = 0.1;
+    float iouThreshold = 0.0001;
     bool useGPU = false;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
@@ -86,9 +87,22 @@ void Test() {
     }
 
 }
+void Inference(const std::string& directoryPath) {
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        if (fs::is_regular_file(entry.path()) && entry.path().extension() == ".jpg") {
+            std::string imagePath = entry.path().string();
+            std::cout << "Infering image: " << imagePath << std::endl;
+            Test(imagePath);
+        }
+    }
+}
+
+
+
 
 int main() {
-    Test();
+    std::string directoryPath = "/home/yibo/yolov8_onnxruntime_cpp/images/origin_data";
+    Inference(directoryPath);
     return 0;
 }
 
