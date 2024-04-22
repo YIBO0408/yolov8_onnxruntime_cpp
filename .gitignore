@@ -7,3 +7,5 @@ onnxruntime-win-cpu-1.17.0/
 onnxruntime-win-gpu-1.17.0/
 .vscode/
 images/origin_data
+output/
+images/
