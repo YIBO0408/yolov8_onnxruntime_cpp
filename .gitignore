@@ -9,3 +9,4 @@ onnxruntime-win-gpu-1.17.0/
 images/origin_data
 output/
 images/
+configs/
