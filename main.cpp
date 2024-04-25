@@ -9,14 +9,14 @@ namespace fs = std::filesystem;
 
 void Test(std::string imagePath) {
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
-    std::string model = "best.onnx"; 
+    std::string model = "best_seg.onnx"; 
     std::string modelPath = projectRoot / "models" / model;
-    std::string yamlPath = projectRoot / "configs/jke_zhuanzi.yaml"; // detect or segment choose it
+    std::string yamlPath = projectRoot / "configs/jke_zhuanzi_seg.yaml"; // detect or segment choose it
     // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
-    cv::Size imageSize(768, 768); 
+    cv::Size imageSize(1600, 1600); 
     MODEL_TYPE modelType = YOLO_DET_SEG_V8; // YOLO_CLS_V8
     float rectConfidenceThreshold = 0.1;
-    float iouThreshold = 0.0001;
+    float iouThreshold = 0.001;
     bool useGPU = false;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
@@ -41,7 +41,6 @@ void Test(std::string imagePath) {
 
         int detections = results.size();
         std::cout << "[YOLO_V8]: Number of detections: " << detections << std::endl;
-        cv::Mat mask = image.clone();
         for (int i = 0; i < detections; ++i)
         {
             DL_RESULT detection = results[i];
@@ -50,14 +49,17 @@ void Test(std::string imagePath) {
             // Detection box
             cv::rectangle(image, box, color, 1);
             // Detection box text
-            std::string classString = detection.className + " " + std::to_string(detection.confidence).substr(0, 4);
+            std::string classString = detection.className + " " + std::to_string(detection.confidence).substr(0, 4);       
             cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
             cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
             cv::rectangle(image, textBox, color, cv::FILLED);
             cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2);
-            // Segmentation mask contours
-            std::vector<std::vector<cv::Point>> contours = detection.contours;
-            cv::drawContours(image(box), contours, -1, cv::Scalar(0, 255, 0), 2);
+            // Check if contours are available
+            if (!detection.contours.empty()) {
+                // Segmentation mask contours
+                std::vector<std::vector<cv::Point>> contours = detection.contours;
+                cv::drawContours(image(box), contours, -1, cv::Scalar(0, 255, 0), 2);
+            }
         }
         if (model.find("seg") != std::string::npos) {
             std::filesystem::path outputPath = projectRoot / "output/seg_result.jpg";
@@ -90,7 +92,6 @@ void Inference(const std::string& directoryPath) {
     for (const auto& entry : fs::directory_iterator(directoryPath)) {
         if (fs::is_regular_file(entry.path()) && entry.path().extension() == ".jpg") {
             std::string imagePath = entry.path().string();
-            std::cout << "Infering image: " << imagePath << std::endl;
             Test(imagePath);
         }
     }
@@ -100,7 +101,7 @@ void Inference(const std::string& directoryPath) {
 
 
 int main() {
-    std::string directoryPath = "/home/yibo/yolov8_onnxruntime_cpp/images/origin_data";
+    std::string directoryPath = "/home/yibo/yolov8_onnxruntime_cpp/test";
     Inference(directoryPath);
     return 0;
 }

@@ -193,9 +193,15 @@ void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const
 }
 
 
-void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold, 
-    const cv::Mat& maskProposals, const cv::Mat& mask_protos, 
-    const cv::Vec4d& params, const cv::Size& srcImgShape, std::vector<DL_RESULT>& output) {
+void GetMask(
+    const int* const _seg_params, 
+    const float& rectConfidenceThreshold, 
+    const cv::Mat& maskProposals, 
+    const cv::Mat& mask_protos, 
+    const cv::Vec4d& params, 
+    const cv::Size& srcImgShape, 
+    std::vector<DL_RESULT>& output) 
+    {
     int _segChannels = *_seg_params;
     int _segHeight = *(_seg_params + 1);
     int _segWidth = *(_seg_params + 2);
@@ -213,7 +219,11 @@ void GetMask(const int* const _seg_params, const float& rectConfidenceThreshold,
         //sigmoid
         cv::exp(-maskChannels[i], dest);
         dest = 1.0 / (1.0 + dest);
-        cv::Rect roi(int(params[2] / _netWidth * _segWidth), int(params[3] / _netHeight * _segHeight), int(_segWidth - params[2] / 2), int(_segHeight - params[3] / 2));
+        cv::Rect roi(
+            int(params[2] / _netWidth * _segWidth), 
+            int(params[3] / _netHeight * _segHeight), 
+            int(_segWidth - params[2] / 2), 
+            int(_segHeight - params[3] / 2));
         dest = dest(roi);
         cv::resize(dest, mask, srcImgShape, cv::INTER_NEAREST);
         //crop
@@ -408,24 +418,25 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, clock_t& starttime_1, cv::V
             if (result.box.width != 0 && result.box.height != 0) oResult.push_back(result);
             if (runSegmentation) temp_mask_proposals.push_back(picked_proposals[idx]);
         }
-
-        if (runSegmentation) {
-            cv::Mat mask_proposals;
-            for (int i = 0; i < temp_mask_proposals.size(); ++i)
-                mask_proposals.push_back(cv::Mat(temp_mask_proposals[i]).t());
-            std::vector<int64_t> _outputMaskTensorShape;
-            _outputMaskTensorShape = outputTensor[1].GetTensorTypeAndShapeInfo().GetShape();
-            int _segChannels = _outputMaskTensorShape[1];
-            int _segWidth = _outputMaskTensorShape[2];
-            int _segHeight = _outputMaskTensorShape[3];
-            float* pdata = outputTensor[1].GetTensorMutableData<float>();
-            std::vector<float> mask(pdata, pdata + _segChannels * _segWidth * _segHeight);
-            // int _seg_params[5] = {_segChannels, _segWidth, _segHeight, inputNodeDims[2], inputNodeDims[3]};
-            // std::cout << inputNodeDims[2] << std::endl;
-            // std::cout << imgSize.at(0) << std::endl;
-            int _seg_params[5] = {_segChannels, _segWidth, _segHeight, imgSize.at(0), imgSize.at(1) };
-            cv::Mat mask_protos = cv::Mat(mask);
-            GetMask(_seg_params, rectConfidenceThreshold, mask_proposals, mask_protos, params, iImg.size(), oResult);
+        if (!boxes.empty()) {
+            if (runSegmentation) {
+                cv::Mat mask_proposals;
+                for (int i = 0; i < temp_mask_proposals.size(); ++i)
+                    mask_proposals.push_back(cv::Mat(temp_mask_proposals[i]).t());
+                std::vector<int64_t> _outputMaskTensorShape;
+                _outputMaskTensorShape = outputTensor[1].GetTensorTypeAndShapeInfo().GetShape();
+                int _segChannels = _outputMaskTensorShape[1];
+                int _segWidth = _outputMaskTensorShape[2];
+                int _segHeight = _outputMaskTensorShape[3];
+                float* pdata = outputTensor[1].GetTensorMutableData<float>();
+                std::vector<float> mask(pdata, pdata + _segChannels * _segWidth * _segHeight);
+                // int _seg_params[5] = {_segChannels, _segWidth, _segHeight, inputNodeDims[2], inputNodeDims[3]};
+                // std::cout << inputNodeDims[2] << std::endl;
+                // std::cout << imgSize.at(0) << std::endl;
+                int _seg_params[5] = {_segChannels, _segWidth, _segHeight, imgSize.at(0), imgSize.at(1) };
+                cv::Mat mask_protos = cv::Mat(mask);
+                GetMask(_seg_params, rectConfidenceThreshold, mask_proposals, mask_protos, params, iImg.size(), oResult);
+            }
         }
 
 #ifdef benchmark
