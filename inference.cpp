@@ -213,7 +213,6 @@ void GetMask(
     cv::Mat masks = matmulRes.reshape(output.size(), { _segHeight,_segWidth });
     std::vector<cv::Mat> maskChannels;
     split(masks, maskChannels);
-
     for (int i = 0; i < output.size(); ++i) {
         cv::Mat dest, mask;
         //sigmoid
@@ -230,9 +229,23 @@ void GetMask(
         cv::Rect temp_rect = output[i].box;
         mask = mask(temp_rect) > rectConfidenceThreshold;
         std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-        output[i].contours = contours;
-        // output[i].boxMask = mask;
+        cv::findContours(mask.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        double maxArea = -1;
+        int maxAreaIdx = -1;
+        for (int j = 0; j < contours.size(); ++j) {
+            double area = cv::contourArea(contours[j]);
+            if (area > maxArea) {
+                maxArea = area;
+                maxAreaIdx = j;
+            }
+        }
+        if (maxAreaIdx != -1) {
+            std::vector<std::vector<cv::Point>> filteredContours;
+            filteredContours.push_back(contours[maxAreaIdx]);
+            output[i].contours = filteredContours;
+        } else {
+            output[i].contours.clear();
+        }
     }
 }
 
@@ -324,7 +337,7 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, DL_INIT_PARAM& iParams, std::vector<DL_
         half* blob = new half[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
-        TensorProcess(starttime_1, params, iImg, blob, inputNodeDims, oResult);
+        TensorProcess(iParams, starttime_1, params, iImg, blob, inputNodeDims, oResult);
 #endif
     }
         return Ret;

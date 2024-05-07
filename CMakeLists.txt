@@ -17,7 +17,7 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # -------------- Compile CUDA for FP16 inference if needed  ------------------#
-option(USE_CUDA "Enable CUDA support" OFF)
+option(USE_CUDA "Enable CUDA support" ON)
 if (NOT APPLE AND USE_CUDA)
     find_package(CUDA REQUIRED)
     include_directories(${CUDA_INCLUDE_DIRS})
@@ -27,8 +27,21 @@ else ()
 endif ()
 
 # -------------- ONNXRUNTIME  ------------------#
-set(ONNXRUNTIME_VERSION 1.15.0)
-set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/onnxruntime-linux-cpu-${ONNXRUNTIME_VERSION}")
+set(ONNXRUNTIME_VERSION 1.17.0)
+
+if (WIN32)
+    if (USE_CUDA)
+        set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/onnxruntime-win-gpu-${ONNXRUNTIME_VERSION}")
+    else ()
+        set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/onnxruntime-win-cpu-${ONNXRUNTIME_VERSION}")
+    endif ()
+elseif (LINUX)
+    if (USE_CUDA)
+        set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/onnxruntime-linux-gpu-${ONNXRUNTIME_VERSION}")
+    else ()
+        set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/onnxruntime-linux-cpu-${ONNXRUNTIME_VERSION}")
+    endif ()
+endif ()
 
 
 
@@ -46,7 +59,10 @@ if (WIN32)
 elseif (LINUX)
     target_link_libraries(${PROJECT_NAME}   ${OpenCV_LIBS} 
                                             ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so 
-                                            ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so.1.15.0)
+                                            ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so.1.17.0
+                                            ${ONNXRUNTIME_ROOT}/lib/libonnxruntime_providers_cuda.so
+                                            ${ONNXRUNTIME_ROOT}/lib/libonnxruntime_providers_shared.so
+                                            )
     if (USE_CUDA)
         target_link_libraries(${PROJECT_NAME} ${CUDA_LIBRARIES})
     endif ()

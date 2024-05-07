@@ -7,17 +7,17 @@
 
 namespace fs = std::filesystem;
 
-void Test(std::string imagePath) {
+void Test(std::string imagePath, std::string imageName) {
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
-    std::string model = "best_seg.onnx"; 
+    std::string model = "best.onnx"; 
     std::string modelPath = projectRoot / "models" / model;
-    std::string yamlPath = projectRoot / "configs/jke_zhuanzi_seg.yaml"; // detect or segment choose it
+    std::string yamlPath = projectRoot / "configs/huachuan.yaml"; // detect or segment choose it
     // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
-    cv::Size imageSize(1600, 1600); 
+    cv::Size imageSize(512, 512); 
     MODEL_TYPE modelType = YOLO_DET_SEG_V8; // YOLO_CLS_V8
-    float rectConfidenceThreshold = 0.1;
-    float iouThreshold = 0.001;
-    bool useGPU = false;
+    float rectConfidenceThreshold = 0.6;
+    float iouThreshold = 0.45;
+    bool useGPU = true;
 
     std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
     std::cout << "[YOLO_V8]: Infer model: " << model << std::endl;
@@ -61,17 +61,15 @@ void Test(std::string imagePath) {
                 cv::drawContours(image(box), contours, -1, cv::Scalar(0, 255, 0), 2);
             }
         }
-        if (model.find("seg") != std::string::npos) {
-            std::filesystem::path outputPath = projectRoot / "output/seg_result.jpg";
-            cv::imwrite(outputPath, image);
-            std::cout << "[YOLO_V8(SEG)]: Result image saved at: " << outputPath << std::endl;
+        std::string outputDirectory = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/output/";
 
-        }
-        else {
-            std::filesystem::path outputPath = projectRoot / "output/det_result.jpg";
-            cv::imwrite(outputPath, image);
-            std::cout << "[YOLO_V8(DET)]: Result image saved at: " << outputPath << std::endl;
-        }
+        if (!fs::exists(outputDirectory))
+            fs::create_directory(outputDirectory);
+
+        std::filesystem::path outputImagePath = outputDirectory + imageName + "_result.jpg";
+
+        cv::imwrite(outputImagePath.string(), image);
+        std::cout << "[YOLO_V8(DET_SEG)]: Result image saved at: " << outputImagePath << std::endl;
     }
     else {
 
@@ -92,7 +90,10 @@ void Inference(const std::string& directoryPath) {
     for (const auto& entry : fs::directory_iterator(directoryPath)) {
         if (fs::is_regular_file(entry.path()) && entry.path().extension() == ".jpg") {
             std::string imagePath = entry.path().string();
-            Test(imagePath);
+            std::string imageName = entry.path().filename().stem().string();
+            std::cout << imagePath << std::endl;
+            std::cout << imageName << std::endl;
+            Test(imagePath, imageName);
         }
     }
 }
@@ -101,7 +102,7 @@ void Inference(const std::string& directoryPath) {
 
 
 int main() {
-    std::string directoryPath = "/home/yibo/yolov8_onnxruntime_cpp/test";
+    std::string directoryPath = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/images/testPic";
     Inference(directoryPath);
     return 0;
 }
