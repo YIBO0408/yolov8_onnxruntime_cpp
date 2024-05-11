@@ -35,13 +35,13 @@ void Test(std::string imagePath, std::string imageName) {
     if (modelType == YOLO_DET_SEG_V8) {
 
         for (const auto& result : results) {
-            std::cout << "[YOLO_V8]: Class:" << result.className 
-            << ", Confidence:" << result.confidence 
-            << ", Bounding Box:" << result.box << std::endl;
+            std::cout << "[YOLO_V8]: 类别: " << result.className 
+            << " , 置信度: " << result.confidence 
+            << std::endl;
         }
 
         int detections = results.size();
-        std::cout << "[YOLO_V8]: Number of detections: " << detections << std::endl;
+        std::cout << "[YOLO_V8]: 检测数量: " << detections << std::endl;
         for (int i = 0; i < detections; ++i)
         {
             DL_RESULT detection = results[i];
@@ -78,7 +78,7 @@ void Test(std::string imagePath, std::string imageName) {
 
         std::filesystem::path outputPath = projectRoot / "output/cls_result.jpg";
         cv::imwrite(outputPath.string(), image);
-        std::cout << "[YOLO_V8(CLS)]: Result image saved at: " << outputPath << std::endl;
+        // std::cout << "[YOLO_V8(CLS)]: Result image saved at: " << outputPath << std::endl;
     }
 
 }
@@ -88,7 +88,7 @@ void Inference(const std::string& directoryPath) {
             std::string imagePath = entry.path().string();
             std::string imageName = entry.path().filename().stem().string();
 
-            std::cout << "[YOLO_V8]: Infering image: " << imageName << ".jpg" << std::endl;
+            std::cout << "[YOLO_V8]: 正在推理图片: " << imageName << ".jpg" << std::endl;
             Test(imagePath, imageName);
             }
         }

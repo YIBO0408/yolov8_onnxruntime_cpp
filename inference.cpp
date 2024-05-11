@@ -44,7 +44,7 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
     }
     auto starttime_5 =  std::chrono::high_resolution_clock::now();
     auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_5 - starttime_2).count();
-    std::cout << "CreateSession时间: " << duration_ms << " ms" << std::endl;
+    std::cout << "\nCreateSession时间: " << duration_ms << " ms" << std::endl;
 
 
     std::vector<std::string> classNames;
@@ -382,7 +382,7 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_cl
     case YOLO_DET_SEG_V8: {
         // yolov5 has an output of shape (batchSize, 25200, 85) (Num classes + box[x,y,w,h] + confidence[c])
         // yolov8 has an output of shape (batchSize, 84,  8400) (Num classes + box[x,y,w,h])
-        cout << "###################YOLO_DET_SEG_V8###################" << endl;
+        cout << "---------------------YOLO_DET_SEG_V8---------------------" << endl;
         int dimensions = _outputTensorShape[1];
         int rows = _outputTensorShape[2];
         cv::Mat rowData(dimensions, rows, CV_32F, output);
@@ -479,7 +479,7 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_cl
     }
     case YOLO_CLS_V8:
     {
-        cout << "##################YOLO_CLS_V8##################" << endl;
+        cout << "---------------------YOLO_CLS_V8---------------------" << endl;
         DL_RESULT result;
         for (int i = 0; i < this->classes.size(); i++) {
             result.classId = i;
