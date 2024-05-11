@@ -25,9 +25,9 @@ namespace Ort
 
 std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TYPE modelType, const std::string& modelPath, 
     const std::string& yamlPath, const cv::Size& imgSize, float rectConfidenceThreshold, float iouThreshold, bool useGPU = false) 
-{
+{    
+    auto starttime_2 =  std::chrono::high_resolution_clock::now();
     std::vector<DL_RESULT> results;
-
     DL_INIT_PARAM params;
     params.modelPath = modelPath;
     params.modelType = modelType;
@@ -37,14 +37,12 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
     params.iouThreshold = iouThreshold;
     params.cudaEnable = useGPU;
 
-    auto starttime_2 =  std::chrono::high_resolution_clock::now();
     if (CreateSession(params) != 0) {
         std::cerr << "[YOLO_V8]: Failed to create session" << std::endl;
         return results;
     }
     auto starttime_5 =  std::chrono::high_resolution_clock::now();
     auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_5 - starttime_2).count();
-    std::cout << "\nCreateSession时间: " << duration_ms << " ms" << std::endl;
 
 
     std::vector<std::string> classNames;
@@ -60,15 +58,15 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
         return results;
     }
 
-    auto starttime_1 =  std::chrono::high_resolution_clock::now();
+    auto starttime_4 =  std::chrono::high_resolution_clock::now();
+    auto duration_ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_4 - starttime_5).count();
+
     std::vector<DL_RESULT> res;
     if (RunSession(image, params, res) != 0) {
         std::cerr << "[YOLO_V8]: Failed to run session" << std::endl;
         return results;
     }
-    auto starttime_3 =  std::chrono::high_resolution_clock::now();
-    auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_1).count();
-    std::cout << "RunSession推理时间: " << duration_ms3 << " ms" << std::endl; 
+   
 
     if (modelType == YOLO_CLS_V8 ) {
         float maxConfidence = 0;
@@ -98,7 +96,12 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
             results.push_back(result);
         }
     }
-
+    auto starttime_3 =  std::chrono::high_resolution_clock::now();
+    auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_4).count();
+    
+    std::cout << "CreateSession时间: " << duration_ms << " ms" << std::endl;
+    std::cout << "ReadPic+ReadClassName时间: " << duration_ms4 << " ms" << std::endl; 
+    std::cout << "RunSession时间: " << duration_ms3 << " ms" << std::endl; 
     return results;
 }
 

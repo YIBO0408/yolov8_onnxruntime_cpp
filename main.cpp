@@ -16,14 +16,13 @@ void Test(std::string imagePath, std::string imageName) {
     MODEL_TYPE modelType = YOLO_DET_SEG_V8; 
     float rectConfidenceThreshold = 0.6;
     float iouThreshold = 0.45;
-    bool useGPU = true;
+    bool useGPU = false;
     std::unique_ptr<YOLO_V8> yolo(new YOLO_V8);
 
     auto starttime_1 =  std::chrono::high_resolution_clock::now();
     auto results = yolo->Inference(imagePath, modelType, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
     auto starttime_3 =  std::chrono::high_resolution_clock::now();
     auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_1).count();
-    std::cout << "Inference总推理时间:" <<duration_ms3 << "ms" << std::endl;   
 
 
     cv::Mat image = cv::imread(imagePath);
@@ -42,6 +41,8 @@ void Test(std::string imagePath, std::string imageName) {
 
         int detections = results.size();
         std::cout << "[YOLO_V8]: 检测数量: " << detections << std::endl;
+        std::cout << "Inference总推理时间:" <<duration_ms3 << "ms" << std::endl;   
+
         for (int i = 0; i < detections; ++i)
         {
             DL_RESULT detection = results[i];
@@ -88,7 +89,7 @@ void Inference(const std::string& directoryPath) {
             std::string imagePath = entry.path().string();
             std::string imageName = entry.path().filename().stem().string();
 
-            std::cout << "[YOLO_V8]: 正在推理图片: " << imageName << ".jpg" << std::endl;
+            std::cout << "\n[YOLO_V8]: 正在推理图片: " << imageName << ".jpg" << std::endl;
             Test(imagePath, imageName);
             }
         }
