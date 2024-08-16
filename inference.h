@@ -57,7 +57,9 @@ public:
     char* TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_clock::time_point& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims,
         std::vector<DL_RESULT>& oResult);
     char* PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oImg);
-    int ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames);
+    // int ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames);
+    int ReadClassNames(const std::string& txtPath, std::vector<std::string>& classNames);
+
     std::vector<std::string> classes{};
     bool cudaEnable;
     MODEL_TYPE modelType;

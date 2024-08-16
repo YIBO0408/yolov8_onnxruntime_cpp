@@ -11,3 +11,8 @@ images/origin_data
 output/
 images/
 configs/
+val_ng_cls_output/
+val_ok_cls_output/
+cls_output/
+det_seg_output/
+DZtest/

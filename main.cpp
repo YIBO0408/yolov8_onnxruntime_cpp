@@ -10,17 +10,17 @@ namespace fs = std::filesystem;
 void Test(std::string imagePath, std::string imageName) {
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
     std::string model = "best.onnx"; 
-    std::string modelPath = projectRoot / "models" / model;
-    std::string yamlPath = projectRoot / "configs/huachuan.yaml"; 
-    cv::Size imageSize(512, 512); 
+    std::string modelPath = projectRoot / "DZtest" / model;
+    std::string labelPath = projectRoot / "DZtest/class_names_list.txt"; 
+    cv::Size imageSize(768, 768); 
     MODEL_TYPE modelType = YOLO_DET_SEG_V8; 
-    float rectConfidenceThreshold = 0.6;
-    float iouThreshold = 0.45;
-    bool useGPU = false;
+    float rectConfidenceThreshold = 0.7;
+    float iouThreshold = 0.0001;
+    bool useGPU = true;
     std::unique_ptr<YOLO_V8> yolo(new YOLO_V8);
 
     auto starttime_1 =  std::chrono::high_resolution_clock::now();
-    auto results = yolo->Inference(imagePath, modelType, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
+    auto results = yolo->Inference(imagePath, modelType, modelPath, labelPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
     auto starttime_3 =  std::chrono::high_resolution_clock::now();
     auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_1).count();
 
@@ -59,7 +59,7 @@ void Test(std::string imagePath, std::string imageName) {
                 cv::drawContours(image(box), contours, -1, cv::Scalar(0, 255, 0), 2);
             }
         }
-        std::string outputDirectory = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/output/";
+        std::string outputDirectory = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/det_seg_output/";
 
         if (!fs::exists(outputDirectory))
             fs::create_directory(outputDirectory);
@@ -71,15 +71,19 @@ void Test(std::string imagePath, std::string imageName) {
     else {
 
         for (const auto& result : results) {
-            std::cout << "[YOLO_V8]: Class:" << result.className << ", Confidence: " << result.confidence << std::endl;
+            std::cout << "[YOLO_V8]: 类别: " << result.className << ", 置信度: " << result.confidence << std::endl;
             std::string text = result.className + " " + std::to_string(result.confidence).substr(0, 4);
-            cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
+            cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
 
         }
+        std::string outputDirectory = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/cls_output/";
+        if (!fs::exists(outputDirectory))
+            fs::create_directory(outputDirectory);
 
-        std::filesystem::path outputPath = projectRoot / "output/cls_result.jpg";
-        cv::imwrite(outputPath.string(), image);
-        // std::cout << "[YOLO_V8(CLS)]: Result image saved at: " << outputPath << std::endl;
+        std::filesystem::create_directory(outputDirectory);
+
+        std::filesystem::path outputImagePath = outputDirectory + imageName + "_result.jpg";
+        cv::imwrite(outputImagePath.string(), image);
     }
 
 }
@@ -99,7 +103,7 @@ void Inference(const std::string& directoryPath) {
 
 
 int main() {
-    std::string directoryPath = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/images/test/";
+    std::string directoryPath = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/DZtest/small";
     Inference(directoryPath);
     return 0;
 }

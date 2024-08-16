@@ -285,8 +285,9 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     }
 
     sessionOption.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-    sessionOption.SetIntraOpNumThreads(iParams.intraOpNumThreads); //1
-    sessionOption.SetLogSeverityLevel(iParams.logSeverityLevel); // 3
+    sessionOption.SetIntraOpNumThreads(0);
+    sessionOption.SetInterOpNumThreads(0);
+    sessionOption.SetLogSeverityLevel(iParams.logSeverityLevel);
 
 #ifdef _WIN32
         int ModelPathSize = MultiByteToWideChar(CP_UTF8, 0, iParams.modelPath.c_str(), static_cast<int>(iParams.modelPath.length()), nullptr, 0);
@@ -544,43 +545,71 @@ char* YOLO_V8::WarmUpSession(DL_INIT_PARAM& iParams) {
 }
 
 
-int YOLO_V8::ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames) {
+// int YOLO_V8::ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames) {
 
-    std::ifstream file(yamlPath);
+//     std::ifstream file(yamlPath);
+//     if (!file.is_open()) {
+//         std::cerr << "Failed to open YAML file" << std::endl;
+//         return 1;
+//     }
+
+//     std::string line;
+//     std::vector<std::string> lines;
+//     while (std::getline(file, line))
+//     {
+//         lines.push_back(line);
+//     }
+
+//     std::size_t start = 0;
+//     std::size_t end = 0;
+//     for (std::size_t i = 0; i < lines.size(); i++)
+//     {
+//         if (lines[i].find("names:") != std::string::npos)
+//         {
+//             start = i + 1;
+//         }
+//         else if (start > 0 && lines[i].find(':') == std::string::npos)
+//         {
+//             end = i;
+//             break;
+//         }
+//     }
+
+//     for (std::size_t i = start; i < end; i++)
+//     {
+//         std::stringstream ss(lines[i]);
+//         std::string name;
+//         std::getline(ss, name, ':');
+//         std::getline(ss, name);
+//         name.erase(std::remove_if(name.begin(), name.end(), ::isspace), name.end());
+//         classNames.push_back(name);
+//     }
+//     return 0;
+// }
+
+
+int YOLO_V8::ReadClassNames(const std::string& txtPath, std::vector<std::string>& classNames) {
+    std::ifstream file(txtPath);
     if (!file.is_open()) {
-        std::cerr << "Failed to open YAML file" << std::endl;
+        std::cerr << "Failed to open TXT file" << std::endl;
         return 1;
     }
 
     std::string line;
-    std::vector<std::string> lines;
-    while (std::getline(file, line))
-    {
-        lines.push_back(line);
-    }
+    while (std::getline(file, line)) {
+        
+        line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }));
+        line.erase(std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), line.end());
 
-    std::size_t start = 0;
-    std::size_t end = 0;
-    for (std::size_t i = 0; i < lines.size(); i++)
-    {
-        if (lines[i].find("names:") != std::string::npos)
-        {
-            start = i + 1;
-        }
-        else if (start > 0 && lines[i].find(':') == std::string::npos)
-        {
-            end = i;
-            break;
+        if (!line.empty()) {
+            classNames.push_back(line);
         }
     }
 
-    for (std::size_t i = start; i < end; i++)
-    {
-        std::stringstream ss(lines[i]);
-        std::string name;
-        std::getline(ss, name, ':');
-        std::getline(ss, name);
-        classNames.push_back(name);
-    }
+    file.close();
     return 0;
 }
