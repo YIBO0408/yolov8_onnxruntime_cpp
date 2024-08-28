@@ -16,3 +16,5 @@ val_ok_cls_output/
 cls_output/
 det_seg_output/
 DZtest/
+huachuan/
+main_.cpp

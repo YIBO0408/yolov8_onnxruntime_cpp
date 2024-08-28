@@ -4,7 +4,6 @@
 #include <regex>
 #include <random>
 #define benchmark
-using namespace std;
 
 YOLO_V8::YOLO_V8() { 
 
@@ -23,30 +22,12 @@ namespace Ort
 #endif
 
 
-std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TYPE modelType, const std::string& modelPath, 
-    const std::string& yamlPath, const cv::Size& imgSize, float rectConfidenceThreshold, float iouThreshold, bool useGPU = false) 
-{    
-    auto starttime_2 =  std::chrono::high_resolution_clock::now();
-    std::vector<DL_RESULT> results;
-    DL_INIT_PARAM params;
-    params.modelPath = modelPath;
-    params.modelType = modelType;
-    params.imgSize.push_back(imgSize.width);
-    params.imgSize.push_back(imgSize.height);
-    params.rectConfidenceThreshold = rectConfidenceThreshold;
-    params.iouThreshold = iouThreshold;
-    params.cudaEnable = useGPU;
-
-    if (CreateSession(params) != 0) {
-        std::cerr << "[YOLO_V8]: Failed to create session" << std::endl;
-        return results;
-    }
-    auto starttime_5 =  std::chrono::high_resolution_clock::now();
-    auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_5 - starttime_2).count();
-
+std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, const std::string& txtPath) {
 
     std::vector<std::string> classNames;
-    if (ReadClassNames(yamlPath, classNames) != 0) {
+    std::vector<DL_RESULT> results;
+
+    if (ReadClassNames(txtPath, classNames) != 0) {
         std::cerr << "[YOLO_V8]: Failed to read class names" << std::endl;
         return results;
     }
@@ -58,15 +39,16 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
         return results;
     }
 
-    auto starttime_4 =  std::chrono::high_resolution_clock::now();
-    auto duration_ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_4 - starttime_5).count();
-
+    auto starttime_4 = std::chrono::high_resolution_clock::now();
+    
     std::vector<DL_RESULT> res;
-    if (RunSession(image, params, res) != 0) {
+    if (RunSession(image, res) != 0) {
         std::cerr << "[YOLO_V8]: Failed to run session" << std::endl;
         return results;
     }
-   
+    auto starttime_3 = std::chrono::high_resolution_clock::now();
+    auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_4).count();
+    std::cout << "[YOLO_V8]: RunSession时间: " << duration_ms3 << " ms" << std::endl;
 
     if (modelType == YOLO_CLS_V8 ) {
         float maxConfidence = 0;
@@ -96,12 +78,7 @@ std::vector<DL_RESULT> YOLO_V8::Inference(const std::string& imagePath, MODEL_TY
             results.push_back(result);
         }
     }
-    auto starttime_3 =  std::chrono::high_resolution_clock::now();
-    auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_4).count();
-    
-    std::cout << "CreateSession时间: " << duration_ms << " ms" << std::endl;
-    std::cout << "ReadPic+ReadClassName时间: " << duration_ms4 << " ms" << std::endl; 
-    std::cout << "RunSession时间: " << duration_ms3 << " ms" << std::endl; 
+
     return results;
 }
 
@@ -136,7 +113,7 @@ char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oIm
 
     int h = iImg.rows;
     int w = iImg.cols;
-    int m = min(h, w);
+    int m = std::min(h, w);
     int top = (h - m) / 2;
     int left = (w - m) / 2;
 
@@ -159,10 +136,10 @@ void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const
     }
 
     cv::Size shape = image.size();
-    float r = min((float)newShape.height / (float)shape.height,
+    float r = std::min((float)newShape.height / (float)shape.height,
         (float)newShape.width / (float)shape.width);
     if (!scaleUp)
-        r = min(r, 1.0f);
+        r = std::min(r, 1.0f);
 
     float ratio[2]{ r, r };
     int new_un_pad[2] = { (int)std::round((float)shape.width * r),(int)std::round((float)shape.height * r) };
@@ -262,7 +239,6 @@ void GetMask(
 
  
 char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
-    char* Ret = RET_OK;
     rectConfidenceThreshold = iParams.rectConfidenceThreshold;
     iouThreshold = iParams.iouThreshold;
     imgSize = iParams.imgSize;
@@ -271,6 +247,7 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     Ort::SessionOptions sessionOption;
 
     if (iParams.cudaEnable) {
+        cudaEnable = iParams.cudaEnable;
         auto providers = Ort::GetAvailableProviders();
         auto cudaAvailable = std::find(providers.begin(), providers.end(), "CUDAExecutionProvider");
         if (cudaAvailable != providers.end())
@@ -279,14 +256,17 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
             cudaOption.device_id = 0;
             cudaOption.arena_extend_strategy = 0;
             cudaOption.do_copy_in_default_stream = 1;
-            cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchHeuristic;
+            // cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchDefault;            
+            // cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchExhaustive;
+            // cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchHeuristic;
             sessionOption.AppendExecutionProvider_CUDA(cudaOption);
         }
     }
 
     sessionOption.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
     sessionOption.SetIntraOpNumThreads(0);
-    sessionOption.SetInterOpNumThreads(0);
+    // sessionOption.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+    // sessionOption.SetInterOpNumThreads(3);
     sessionOption.SetLogSeverityLevel(iParams.logSeverityLevel);
 
 #ifdef _WIN32
@@ -318,12 +298,12 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
     // std::cout << outputNodeNames.size() << std::endl;
     if (outputNodeNames.size() == 2) runSegmentation = true;
     options = Ort::RunOptions{ nullptr };
-    WarmUpSession(iParams);
+    WarmUpSession();
     return RET_OK;
 }
 
 
-char* YOLO_V8::RunSession(cv::Mat& iImg, DL_INIT_PARAM& iParams, std::vector<DL_RESULT>& oResult) {
+char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
 
 #ifdef benchmark
     auto starttime_1 =  std::chrono::high_resolution_clock::now();
@@ -346,14 +326,14 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, DL_INIT_PARAM& iParams, std::vector<DL_
         float* blob = new float[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
-        TensorProcess(iParams, starttime_1, params, iImg, blob, inputNodeDims, oResult);
+        TensorProcess(starttime_1, params, iImg, blob, inputNodeDims, oResult);
     }
     else {
 #ifdef USE_CUDA
         half* blob = new half[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
-        TensorProcess(iParams, starttime_1, params, iImg, blob, inputNodeDims, oResult);
+        TensorProcess(starttime_1, params, iImg, blob, inputNodeDims, oResult);
 #endif
     }
         return Ret;
@@ -362,7 +342,8 @@ char* YOLO_V8::RunSession(cv::Mat& iImg, DL_INIT_PARAM& iParams, std::vector<DL_
 
 
 template<typename N>
-char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_clock::time_point& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims, std::vector<DL_RESULT>& oResult) {
+char* YOLO_V8::TensorProcess(std::chrono::_V2::system_clock::time_point& starttime_1, 
+cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims, std::vector<DL_RESULT>& oResult) {
     Ort::Value inputTensor = Ort::Value::CreateTensor<typename std::remove_pointer<N>::type> (
         Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU), 
         blob, 
@@ -384,9 +365,8 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_cl
 
     switch (modelType) {
     case YOLO_DET_SEG_V8: {
-        // yolov5 has an output of shape (batchSize, 25200, 85) (Num classes + box[x,y,w,h] + confidence[c])
         // yolov8 has an output of shape (batchSize, 84,  8400) (Num classes + box[x,y,w,h])
-        cout << "---------------------YOLO_DET_SEG_V8---------------------" << endl;
+        std::cout << "---------------------YOLO_DET_SEG_V8---------------------" << std::endl;
         int dimensions = _outputTensorShape[1];
         int rows = _outputTensorShape[2];
         cv::Mat rowData(dimensions, rows, CV_32F, output);
@@ -470,24 +450,29 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_cl
     double process_time = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_2).count();
     double post_process_time = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_4 - starttime_3).count();
     double total_time = pre_process_time + process_time + post_process_time;
-    if (iParams.cudaEnable) {
-        cout << "[YOLO_V8(CUDA)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
-            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << endl;
+    if (cudaEnable) {
+        std::cout << "[YOLO_V8(CUDA)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
+            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << std::endl;
     }
     else {
-        cout << "[YOLO_V8(CPU)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
-            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << endl;
+        std::cout << "[YOLO_V8(CPU)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
+            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << std::endl;
     }
 #endif
         break;
     }
     case YOLO_CLS_V8:
     {
-        cout << "---------------------YOLO_CLS_V8---------------------" << endl;
+        cv::Mat rawData;
+        rawData = cv::Mat(1, this->classes.size(), CV_32F, output);
+        
+        float *data = (float *) rawData.data;
+
         DL_RESULT result;
-        for (int i = 0; i < this->classes.size(); i++) {
+        for (int i = 0; i < this->classes.size(); i++)
+        {
             result.classId = i;
-            result.confidence = output[i];
+            result.confidence = data[i];
             oResult.push_back(result);
         }
 
@@ -497,26 +482,26 @@ char* YOLO_V8::TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_cl
     double process_time = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_2).count();
     double post_process_time = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_4 - starttime_3).count();
     double total_time = pre_process_time + process_time + post_process_time;
-    if (iParams.cudaEnable) {
-        cout << "[YOLO_V8(CUDA)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
-            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << endl;
+    if (cudaEnable) {
+        std::cout << "[YOLO_V8(CUDA)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
+            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << std::endl;
     }
     else {
-        cout << "[YOLO_V8(CPU)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
-            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << endl;
+        std::cout << "[YOLO_V8(CPU)]: 前处理 " << pre_process_time << " ms, 推理 " << process_time 
+            << " ms, 后处理 " << post_process_time << " ms. 总共耗时 " << total_time << " ms." << std::endl;
     }
 #endif
         break;
     }
     default:
-        cout << "[YOLO_V8]: " << "不支持的模型类型." << endl;
+        std::cout << "[YOLO_V8]: " << "不支持的模型类型." << std::endl;
     }
     return RET_OK;
 
 }
 
 
-char* YOLO_V8::WarmUpSession(DL_INIT_PARAM& iParams) {
+char* YOLO_V8::WarmUpSession() {
     cv::Mat iImg = cv::Mat(cv::Size(imgSize.at(0), imgSize.at(1)), CV_8UC3);
     cv::Mat processedImg;
     cv::Vec4d params;
@@ -543,49 +528,6 @@ char* YOLO_V8::WarmUpSession(DL_INIT_PARAM& iParams) {
     }
     return RET_OK;
 }
-
-
-// int YOLO_V8::ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames) {
-
-//     std::ifstream file(yamlPath);
-//     if (!file.is_open()) {
-//         std::cerr << "Failed to open YAML file" << std::endl;
-//         return 1;
-//     }
-
-//     std::string line;
-//     std::vector<std::string> lines;
-//     while (std::getline(file, line))
-//     {
-//         lines.push_back(line);
-//     }
-
-//     std::size_t start = 0;
-//     std::size_t end = 0;
-//     for (std::size_t i = 0; i < lines.size(); i++)
-//     {
-//         if (lines[i].find("names:") != std::string::npos)
-//         {
-//             start = i + 1;
-//         }
-//         else if (start > 0 && lines[i].find(':') == std::string::npos)
-//         {
-//             end = i;
-//             break;
-//         }
-//     }
-
-//     for (std::size_t i = start; i < end; i++)
-//     {
-//         std::stringstream ss(lines[i]);
-//         std::string name;
-//         std::getline(ss, name, ':');
-//         std::getline(ss, name);
-//         name.erase(std::remove_if(name.begin(), name.end(), ::isspace), name.end());
-//         classNames.push_back(name);
-//     }
-//     return 0;
-// }
 
 
 int YOLO_V8::ReadClassNames(const std::string& txtPath, std::vector<std::string>& classNames) {

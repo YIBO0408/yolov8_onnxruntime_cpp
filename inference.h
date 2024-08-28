@@ -44,6 +44,8 @@ typedef struct _DL_RESULT
     cv::Scalar color;
 } DL_RESULT;
 
+
+
 class YOLO_V8
 {
 public:
@@ -51,23 +53,19 @@ public:
     ~YOLO_V8();
 public:
     char* CreateSession(DL_INIT_PARAM& iParams);
-    char* RunSession(cv::Mat& iImg, DL_INIT_PARAM& iParams, std::vector<DL_RESULT>& oResult);
-    char* WarmUpSession(DL_INIT_PARAM& iParams);
+    char* RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult);
+    char* WarmUpSession();
     template<typename N>
-    char* TensorProcess(DL_INIT_PARAM& iParams, std::chrono::_V2::system_clock::time_point& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims,
+    char* TensorProcess(std::chrono::_V2::system_clock::time_point& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims,
         std::vector<DL_RESULT>& oResult);
     char* PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oImg);
-    // int ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames);
     int ReadClassNames(const std::string& txtPath, std::vector<std::string>& classNames);
-
     std::vector<std::string> classes{};
-    bool cudaEnable;
     MODEL_TYPE modelType;
     std::vector<int> imgSize;
-    std::vector<DL_RESULT> Inference(
-    const std::string& imagePath, MODEL_TYPE modelType, const std::string& modelPath, 
-    const std::string& yamlPath, const cv::Size& imgSize, float rectConfidenceThreshold, float iouThreshold, bool useGPU);
+    std::vector<DL_RESULT> Inference(const std::string& imagePath,const std::string& txtPath);
 private:
+    bool cudaEnable;
     Ort::Env env;
     Ort::Session* session;
     Ort::RunOptions options;
