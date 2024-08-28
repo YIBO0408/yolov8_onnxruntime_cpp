@@ -26,7 +26,7 @@ typedef struct _DL_INIT_PARAM
 {
     std::string modelPath;
     MODEL_TYPE modelType;
-    std::vector<int> imgSize = { 640, 640 };
+    std::vector<int> imgSize;
     float rectConfidenceThreshold = 0.6;
     float iouThreshold = 0.5;
     bool cudaEnable = false;
@@ -40,9 +40,11 @@ typedef struct _DL_RESULT
     std::string className;
     float confidence;
     cv::Rect box;
-    cv::Mat boxMask; //detect矩形框内mask
+    std::vector<std::vector<cv::Point>> contours; // 分割的轮廓点
     cv::Scalar color;
 } DL_RESULT;
+
+
 
 class YOLO_V8
 {
@@ -54,27 +56,22 @@ public:
     char* RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult);
     char* WarmUpSession();
     template<typename N>
-    char* TensorProcess(clock_t& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims,
+    char* TensorProcess(std::chrono::_V2::system_clock::time_point& starttime_1, cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims,
         std::vector<DL_RESULT>& oResult);
     char* PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oImg);
-    int ReadClassNames(const std::string& yamlPath, std::vector<std::string>& classNames);
+    int ReadClassNames(const std::string& txtPath, std::vector<std::string>& classNames);
     std::vector<std::string> classes{};
-    bool cudaEnable;
     MODEL_TYPE modelType;
     std::vector<int> imgSize;
-    std::vector<DL_RESULT> Inference(
-    const std::string& imagePath, MODEL_TYPE modelType, const std::string& modelPath, 
-    const std::string& yamlPath, const cv::Size& imgSize, float rectConfidenceThreshold, float iouThreshold, bool useGPU);
+    std::vector<DL_RESULT> Inference(const std::string& imagePath,const std::string& txtPath);
 private:
+    bool cudaEnable;
     Ort::Env env;
     Ort::Session* session;
     Ort::RunOptions options;
     bool runSegmentation = false;
-    // bool cudaEnable;
     std::vector<const char*> inputNodeNames;
     std::vector<const char*> outputNodeNames;
-    // std::vector<int> imgSize;
-    // MODEL_TYPE modelType;
     float rectConfidenceThreshold;
     float iouThreshold;
 };

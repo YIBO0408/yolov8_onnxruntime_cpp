@@ -4,99 +4,119 @@
 #include <opencv2/core.hpp>
 #include <fstream>
 #include "inference.h"
+#include <chrono>
+namespace fs = std::filesystem;
 
 
-void Test() {
+void test(const std::string& directoryPath) {
+    DL_INIT_PARAM params;
     std::filesystem::path projectRoot = std::filesystem::current_path().parent_path();
-    // std::string model = "yolov8s.onnx"; // object detection
-    std::string model = "yolov8x-seg.onnx"; // instance segmentation
-    // std::string model = "yibo_train_cls_best.onnx"; // object classification
-    std::string modelPath = projectRoot / "models" / model;
+    std::string labelPath = projectRoot / "huachuan/class_names_list.txt"; 
+    params.modelPath = projectRoot / "huachuan/best.onnx";
+    params.modelType = YOLO_DET_SEG_V8;
+    params.imgSize = { 768, 768 };
+    params.rectConfidenceThreshold = 0.4;
+    params.iouThreshold = 0.0001;    
+    #ifdef USE_CUDA
+        params.cudaEnable = true;
+        std::cout << "[YOLO_V8]: USE GPU" << std::endl;
+    #else
+        std::cout << "[YOLO_V8]: USE CPU" << std::endl;
+        params.cudaEnable = false;
+    #endif
 
-    std::string imagePath = projectRoot / "images/16.jpg";
+    auto starttime_1 =  std::chrono::high_resolution_clock::now();
 
-    std::string yamlPath = projectRoot / "configs/coco.yaml"; // detect or segment choose it
-    // std::string yamlPath = projectRoot / "configs/classnames.yaml"; //classify choose it
-
-    cv::Size imageSize(640, 640); 
-
-    MODEL_TYPE modelType = YOLO_DET_SEG_V8; // YOLO_CLS_V8
-
-    float rectConfidenceThreshold = 0.3;
-    float iouThreshold = 0.5;
-    bool useGPU = true;
-
-    std::cout << "[YOLO_V8]: Infering image: " << imagePath << std::endl;
-    std::cout << "[YOLO_V8]: Infer model: " << model << std::endl;
     std::unique_ptr<YOLO_V8> yolo(new YOLO_V8);
+    yolo->CreateSession(params);
+    auto starttime_3 =  std::chrono::high_resolution_clock::now();
+    auto duration_ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_3 - starttime_1).count();
+    std::cout << "[YOLO_V8]: 模型预热时间: " << duration_ms4 << "ms" << std::endl;
 
-    auto results = yolo->Inference(imagePath, modelType, modelPath, yamlPath, imageSize, rectConfidenceThreshold, iouThreshold, useGPU);
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        if (fs::is_regular_file(entry.path()) && entry.path().extension() == ".jpg") {
+            std::string imagePath = entry.path().string();
+            std::string imageName = entry.path().filename().stem().string();
 
-    cv::Mat image = cv::imread(imagePath);
-    if (image.empty()) {
-        std::cerr << "[YOLO_V8]: Failed to load image" << std::endl;
-        return;
+            std::cout << "\n[YOLO_V8]: 正在推理图片: " << imageName << ".jpg" << std::endl;
+
+            
+
+            auto starttime_2 =  std::chrono::high_resolution_clock::now();
+
+            auto results = yolo->Inference(imagePath, labelPath);
+
+            auto starttime_4 =  std::chrono::high_resolution_clock::now();
+            auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_4 - starttime_2).count();
+
+            cv::Mat image = cv::imread(imagePath);
+            if (image.empty()) {
+                std::cerr << "[YOLO_V8]: Failed to load image" << std::endl;
+                return;
+            }
+
+            if (params.modelType == YOLO_DET_SEG_V8) {
+
+                for (const auto& result : results) {
+                    std::cout << "[YOLO_V8]: 类别: " << result.className 
+                    << " , 置信度: " << result.confidence 
+                    << std::endl;
+                }
+                int detections = results.size();
+                std::cout << "[YOLO_V8]: 检测数量: " << detections << std::endl;
+                std::cout << "[YOLO_V8]: 总推理时间:" <<duration_ms3 << "ms" << std::endl;   
+
+                for (int i = 0; i < detections; ++i)
+                {
+                    DL_RESULT detection = results[i];
+                    cv::Rect box = detection.box;
+                    cv::Scalar color = detection.color;
+                    cv::rectangle(image, box, color, 1);
+                    std::string classString = detection.className + " " + std::to_string(detection.confidence).substr(0, 4);       
+                    cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
+                    cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
+                    cv::rectangle(image, textBox, color, cv::FILLED);
+                    cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2);
+                    if (!detection.contours.empty()) {
+                        std::vector<std::vector<cv::Point>> contours = detection.contours;
+                        cv::drawContours(image(box), contours, -1, cv::Scalar(0, 255, 0), 2);
+                    }
+                }
+                std::string outputDirectory = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/det_seg_output/";
+
+                if (!fs::exists(outputDirectory))
+                    fs::create_directory(outputDirectory);
+
+                std::filesystem::path outputImagePath = outputDirectory + imageName + "_result.jpg";
+
+                cv::imwrite(outputImagePath.string(), image);
+            }
+            else { // YOLO_CLS_V8
+
+                for (const auto& result : results) {
+                    std::cout << "[YOLO_V8]: 类别: " << result.className << ", 置信度: " << result.confidence << std::endl;
+                    std::string text = result.className + " " + std::to_string(result.confidence).substr(0, 4);
+                    cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+
+                }
+                std::string outputDirectory = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/cls_output/";
+                if (!fs::exists(outputDirectory))
+                    fs::create_directory(outputDirectory);
+
+                std::filesystem::create_directory(outputDirectory);
+
+                std::filesystem::path outputImagePath = outputDirectory + imageName + "_result.jpg";
+                cv::imwrite(outputImagePath.string(), image);
+            }
+
+            }
+        }
     }
 
-    if (modelType == YOLO_DET_SEG_V8) {
-
-        for (const auto& result : results) {
-            std::cout << "[YOLO_V8]: Class:" << result.className 
-            << ", Confidence:" << result.confidence 
-            << ", Bounding Box:" << result.box << std::endl;
-        }
-
-        int detections = results.size();
-        std::cout << "[YOLO_V8]: Number of detections: " << detections << std::endl;
-        cv::Mat mask = image.clone();
-        for (int i = 0; i < detections; ++i)
-        {
-            DL_RESULT detection = results[i];
-            cv::Rect box = detection.box;
-            cv::Scalar color = detection.color;
-            // Detection box
-            cv::rectangle(image, box, color, 2);
-            mask(detection.box).setTo(color, detection.boxMask);
-            // Detection box text
-            std::string classString = detection.className + " " + std::to_string(detection.confidence).substr(0, 4);
-            cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
-            cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
-            cv::rectangle(image, textBox, color, cv::FILLED);
-            cv::putText(image, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2);
-
-        }
-        // Detection mask
-        if (model.find("seg") != std::string::npos) {
-            cv::addWeighted(image, 0.5, mask, 0.5, 0, image);
-            std::filesystem::path outputPath = projectRoot / "output/seg_result.jpg";
-            cv::imwrite(outputPath, image);
-            std::cout << "[YOLO_V8(SEG)]: Result image saved at: " << outputPath << std::endl;
-
-        }
-        else {
-            std::filesystem::path outputPath = projectRoot / "output/det_result.jpg";
-            cv::imwrite(outputPath, image);
-            std::cout << "[YOLO_V8(DET)]: Result image saved at: " << outputPath << std::endl;
-        }
-    }
-    else {
-
-        for (const auto& result : results) {
-            std::cout << "[YOLO_V8]: Class:" << result.className << ", Confidence: " << result.confidence << std::endl;
-            std::string text = result.className + " " + std::to_string(result.confidence).substr(0, 4);
-            cv::putText(image, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
-
-        }
-
-        std::filesystem::path outputPath = projectRoot / "output/cls_result.jpg";
-        cv::imwrite(outputPath.string(), image);
-        std::cout << "[YOLO_V8(CLS)]: Result image saved at: " << outputPath << std::endl;
-    }
-
-}
 
 int main() {
-    Test();
+    std::string dir = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/images/testPic";
+    test(dir);
     return 0;
 }
 

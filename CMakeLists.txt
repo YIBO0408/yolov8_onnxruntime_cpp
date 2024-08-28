@@ -16,7 +16,6 @@ message("c_CMAKE_CURRENT_SOURCE_DIR:  " ${CMAKE_CURRENT_SOURCE_DIR} )
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-
 # -------------- Compile CUDA for FP16 inference if needed  ------------------#
 option(USE_CUDA "Enable CUDA support" ON)
 if (NOT APPLE AND USE_CUDA)
@@ -45,9 +44,7 @@ elseif (LINUX)
 endif ()
 
 include_directories(${PROJECT_NAME} ${ONNXRUNTIME_ROOT}/include)
-
 set(PROJECT_SOURCES inference.h inference.cpp main.cpp)
-
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
 if (WIN32)
@@ -56,11 +53,9 @@ if (WIN32)
         target_link_libraries(${PROJECT_NAME} ${CUDA_LIBRARIES})
     endif ()
 elseif (LINUX)
-    target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} 
-                                          ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so
-                                          ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so.1.17.0
-                                          ${ONNXRUNTIME_ROOT}/lib/libonnxruntime_providers_cuda.so
-                                          ${ONNXRUNTIME_ROOT}/lib/libonnxruntime_providers_shared.so)
+    target_link_libraries(${PROJECT_NAME}   ${OpenCV_LIBS} 
+                                            ${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so 
+                                            )
     if (USE_CUDA)
         target_link_libraries(${PROJECT_NAME} ${CUDA_LIBRARIES})
     endif ()
