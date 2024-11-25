@@ -27,8 +27,8 @@ typedef struct _DL_INIT_PARAM
     std::string modelPath;
     MODEL_TYPE modelType;
     std::vector<int> imgSize;
-    float rectConfidenceThreshold = 0.6;
-    float iouThreshold = 0.5;
+    float rectConfidenceThreshold = 0.6f;
+    float iouThreshold = 0.5f;
     bool cudaEnable = false;
     int logSeverityLevel = 3;
     int intraOpNumThreads = 1;
@@ -61,6 +61,7 @@ public:
     char* PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oImg);
     int ReadClassNames(const std::string& txtPath, std::vector<std::string>& classNames);
     std::vector<std::string> classes{};
+    int classNums = 80;
     MODEL_TYPE modelType;
     std::vector<int> imgSize;
     std::vector<DL_RESULT> Inference(const std::string& imagePath,const std::string& txtPath);
@@ -72,6 +73,11 @@ private:
     bool runSegmentation = false;
     std::vector<const char*> inputNodeNames;
     std::vector<const char*> outputNodeNames;
+    std::vector<Ort::AllocatedStringPtr> input_names_ptr;
+    std::vector<Ort::AllocatedStringPtr> output_names_ptr;
+    std::vector<std::vector<int64_t>> inputShapes;
+    std::vector<std::vector<int64_t>> outputShapes;
     float rectConfidenceThreshold;
     float iouThreshold;
+    // bool isDynamicInputShape{};
 };

@@ -14,17 +14,10 @@ void test(const std::string& directoryPath) {
     std::string labelPath = projectRoot / "huachuan/class_names_list.txt"; 
     params.modelPath = projectRoot / "huachuan/best.onnx";
     params.modelType = YOLO_DET_SEG_V8;
-    params.imgSize = { 768, 768 };
-    params.rectConfidenceThreshold = 0.4;
+    params.imgSize = { 312, 312 }; // VAlgo需要暴露推理时的图片尺寸
+    params.rectConfidenceThreshold = 0.7;
     params.iouThreshold = 0.0001;    
-    #ifdef USE_CUDA
-        params.cudaEnable = true;
-        std::cout << "[YOLO_V8]: USE GPU" << std::endl;
-    #else
-        std::cout << "[YOLO_V8]: USE CPU" << std::endl;
-        params.cudaEnable = false;
-    #endif
-
+    params.cudaEnable = true;
     auto starttime_1 =  std::chrono::high_resolution_clock::now();
 
     std::unique_ptr<YOLO_V8> yolo(new YOLO_V8);
@@ -37,18 +30,12 @@ void test(const std::string& directoryPath) {
         if (fs::is_regular_file(entry.path()) && entry.path().extension() == ".jpg") {
             std::string imagePath = entry.path().string();
             std::string imageName = entry.path().filename().stem().string();
-
             std::cout << "\n[YOLO_V8]: 正在推理图片: " << imageName << ".jpg" << std::endl;
-
-            
-
             auto starttime_2 =  std::chrono::high_resolution_clock::now();
-
             auto results = yolo->Inference(imagePath, labelPath);
-
             auto starttime_4 =  std::chrono::high_resolution_clock::now();
             auto duration_ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(starttime_4 - starttime_2).count();
-
+            
             cv::Mat image = cv::imread(imagePath);
             if (image.empty()) {
                 std::cerr << "[YOLO_V8]: Failed to load image" << std::endl;
@@ -115,7 +102,7 @@ void test(const std::string& directoryPath) {
 
 
 int main() {
-    std::string dir = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/images/testPic";
+    std::string dir = "/home/yibo/git_dir/yolov8_onnxruntime_cpp/images/HandianLocation_HC";
     test(dir);
     return 0;
 }

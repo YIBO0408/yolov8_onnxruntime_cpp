@@ -91,7 +91,8 @@ char* BlobFromImage(cv::Mat& iImg, T& iBlob) {
     int imgWidth = iImg.cols;
     for (int c = 0; c < channels; c++) {
         for (int h = 0; h < imgHeight; h++) {
-            for (int w = 0; w < imgWidth; w++) {
+            for (int w = 0; w < imgWidth; w++) 
+            {
                 iBlob[c * imgWidth * imgHeight + h * imgWidth + w] = typename std::remove_pointer<T>::type(
                     (iImg.at<cv::Vec3b>(h, w)[c]) / 255.0f);
             }
@@ -122,27 +123,33 @@ char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oIm
 }
 
 
-void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const cv::Size& newShape=cv::Size(640, 640),
-    bool autoShape=false, bool scaleFill=false, bool scaleUp=true, int stride=32, const cv::Scalar& color=cv::Scalar(114, 114, 114))
+void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, 
+    const cv::Size& newShape=cv::Size(640, 640),
+    bool autoShape=true, 
+    bool scaleFill=false, 
+    bool scaleUp=true, 
+    int stride=32, 
+    const cv::Scalar& color=cv::Scalar(114, 114, 114))
 {
-    if (false) {
-        int maxLen = MAX(image.rows, image.cols);
-        outImage = cv::Mat::zeros(cv::Size(maxLen, maxLen), CV_8UC3);
-        image.copyTo(outImage(cv::Rect(0, 0, image.cols, image.rows)));
-        params[0] = 1;
-        params[1] = 1;
-        params[3] = 0;
-        params[2] = 0;
-    }
+    // if (false) {
+    //     int maxLen = MAX(image.rows, image.cols);
+    //     outImage = cv::Mat::zeros(cv::Size(maxLen, maxLen), CV_8UC3);
+    //     image.copyTo(outImage(cv::Rect(0, 0, image.cols, image.rows)));
+    //     params[0] = 1;
+    //     params[1] = 1;
+    //     params[3] = 0;
+    //     params[2] = 0;
+    // }
 
     cv::Size shape = image.size();
     float r = std::min((float)newShape.height / (float)shape.height,
-        (float)newShape.width / (float)shape.width);
+                        (float)newShape.width / (float)shape.width);
     if (!scaleUp)
         r = std::min(r, 1.0f);
 
     float ratio[2]{ r, r };
-    int new_un_pad[2] = { (int)std::round((float)shape.width * r),(int)std::round((float)shape.height * r) };
+    int new_un_pad[2] = { (int)std::round((float)shape.width * r),
+                            (int)std::round((float)shape.height * r) };
 
     auto dw = (float)(newShape.width - new_un_pad[0]);
     auto dh = (float)(newShape.height - new_un_pad[1]);
@@ -169,7 +176,6 @@ void LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& params, const
     else {
         outImage = image.clone();
     }
-
     int top = int(std::round(dh - 0.1f));
     int bottom = int(std::round(dh + 0.1f));
     int left = int(std::round(dw - 0.1f));
@@ -214,7 +220,7 @@ void GetMask(
         dest = dest(roi);
         cv::resize(dest, mask, srcImgShape, cv::INTER_NEAREST);
         cv::Rect temp_rect = output[i].box;
-        mask = mask(temp_rect) > rectConfidenceThreshold;
+        mask = mask(temp_rect) > 0.5f; // 固定mask阈值，实测0.5效果最好
         std::vector<std::vector<cv::Point>> contours;
         cv::findContours(mask.clone(), contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
         double maxArea = -1;
@@ -250,23 +256,30 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
         cudaEnable = iParams.cudaEnable;
         auto providers = Ort::GetAvailableProviders();
         auto cudaAvailable = std::find(providers.begin(), providers.end(), "CUDAExecutionProvider");
+        OrtCUDAProviderOptions cudaOption;
+
         if (cudaAvailable != providers.end())
         {
-            OrtCUDAProviderOptions cudaOption;
+            std::cout << "Inference device: GPU" << std::endl;
             cudaOption.device_id = 0;
             cudaOption.arena_extend_strategy = 0;
             cudaOption.do_copy_in_default_stream = 1;
             // cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchDefault;            
             // cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchExhaustive;
-            // cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchHeuristic;
+            cudaOption.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchHeuristic;
             sessionOption.AppendExecutionProvider_CUDA(cudaOption);
+        }
+        else if (cudaAvailable == providers.end())
+        {
+            std::cout << "GPU is not supported. Fallback to CPU." << std::endl;
+            std::cout << "Inference device: CPU" << std::endl;
         }
     }
 
     sessionOption.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
     sessionOption.SetIntraOpNumThreads(0);
     // sessionOption.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
-    // sessionOption.SetInterOpNumThreads(3);
+    // sessionOption.SetInterOpNumThreads(0);
     sessionOption.SetLogSeverityLevel(iParams.logSeverityLevel);
 
 #ifdef _WIN32
@@ -281,22 +294,53 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
 
     session = new Ort::Session(env, modelPath, sessionOption);
     Ort::AllocatorWithDefaultOptions allocator;
-    size_t inputNodesNum = session->GetInputCount();
-    for (size_t i = 0; i < inputNodesNum; i++) {
+    size_t InputNodesNum = session->GetInputCount();
+
+    for (size_t i = 0; i < InputNodesNum; i++) {
         Ort::AllocatedStringPtr input_node_name = session->GetInputNameAllocated(i, allocator);
-        char* temp_buf = new char[50];
-        strcpy(temp_buf, input_node_name.get());
-        inputNodeNames.push_back(temp_buf);
+        this->inputNodeNames.push_back(input_node_name.get());
+        input_names_ptr.push_back(std::move(input_node_name));
+
+        Ort::TypeInfo inputTypeInfo = session->GetInputTypeInfo(i);
+        std::vector<int64_t> inputTensorShape = inputTypeInfo.GetTensorTypeAndShapeInfo().GetShape();
+        this->inputShapes.push_back(inputTensorShape);
+        // this->isDynamicInputShape = false;
+        // // checking if width and height are dynamic
+        // if (inputTensorShape[2] == -1 && inputTensorShape[3] == -1)
+        // {
+        //     std::cout << "Dynamic input shape" << std::endl;
+        //     this->isDynamicInputShape = true;
+        // }
     }
     size_t OutputNodesNum = session->GetOutputCount();
+    if (OutputNodesNum > 1)
+    {
+        this->runSegmentation = true;        
+        std::cout << "Instance Segmentation" << std::endl;
+    }
+    else
+        std::cout << "Object Detection" << std::endl;
+
     for (size_t i = 0; i < OutputNodesNum; i++) {
         Ort::AllocatedStringPtr output_node_name = session->GetOutputNameAllocated(i, allocator);
-        char* temp_buf = new char[10];
-        strcpy(temp_buf, output_node_name.get());
-        outputNodeNames.push_back(temp_buf);
-    }
-    // std::cout << outputNodeNames.size() << std::endl;
-    if (outputNodeNames.size() == 2) runSegmentation = true;
+        
+        this->outputNodeNames.push_back(output_node_name.get());
+        output_names_ptr.push_back(std::move(output_node_name));
+
+        Ort::TypeInfo outputTypeInfo = session->GetOutputTypeInfo(i);
+        std::vector<int64_t> outputTensorShape = outputTypeInfo.GetTensorTypeAndShapeInfo().GetShape();
+        this->outputShapes.push_back(outputTensorShape);
+    }    
+
+    // for (const char *x : this->inputNodeNames)
+    // {
+    //     std::cout << x << std::endl;
+    // }
+    // for (const char *x : this->outputNodeNames)
+    // {
+    //     std::cout << x << std::endl;
+    // }
+
     options = Ort::RunOptions{ nullptr };
     WarmUpSession();
     return RET_OK;
@@ -361,7 +405,7 @@ cv::Vec4d& params, cv::Mat& iImg, N& blob, std::vector<int64_t>& inputNodeDims, 
     std::vector<int64_t> _outputTensorShape;
     _outputTensorShape = outputTensor[0].GetTensorTypeAndShapeInfo().GetShape();
     auto output = outputTensor[0].GetTensorMutableData<typename std::remove_pointer<N>::type>();
-    delete blob;
+    delete[] blob;
 
     switch (modelType) {
     case YOLO_DET_SEG_V8: {
